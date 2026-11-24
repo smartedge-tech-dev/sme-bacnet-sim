@@ -9,6 +9,10 @@ on:
         description: "Publish to PyPI (needs trusted publishing configured on PyPI first)"
         type: boolean
         default: false
+      image_archives_version:
+        description: "Re-export the offline image archives of an already pushed version (e.g. 0.2.0) to release v<version>"
+        type: string
+        default: ""
 
 jobs:
   windows-exe:
@@ -86,22 +90,7 @@ jobs:
       # single-architecture image that was just pushed, tagged $IMAGE:<ver>, so commands after
       # `docker load` are the same as after `docker pull`.
       - name: Export offline image archives
-        env:
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          mkdir -p images
-          for platform in linux/amd64 linux/arm64 linux/arm/v7; do
-            docker pull --platform "$platform" "$IMAGE:$VERSION"
-            arch="$(docker image inspect -f '{{.Architecture}}{{if .Variant}}-{{.Variant}}{{end}}' "$IMAGE:$VERSION")"
-            expected="$(echo "${platform#linux/}" | tr / -)"
-            if [ "$arch" != "$expected" ]; then
-              echo "pulled $arch, expected $expected" >&2
-              exit 1
-            fi
-            docker save "$IMAGE:$VERSION" | gzip -9 > "images/sme-bacnet-sim-$VERSION-linux-$expected.tar.gz"
-            docker image rm "$IMAGE:$VERSION"
-          done
-          ls -l images
+        run: sh packaging/export-image-archives.sh "$IMAGE" "${{ steps.meta.outputs.version }}" images
       - uses: actions/upload-artifact@v4
         with:
           name: docker-images
@@ -124,6 +113,21 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: images/*.tar.gz
+
+  # Manual re-export of the offline image archives for a release whose docker job failed after the push.
+  image-archives:
+    if: github.event_name == 'workflow_dispatch' && inputs.image_archives_version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      IMAGE: ghcr.io/smartedge-tech-dev/sme-bacnet-sim
+      VERSION: ${{ inputs.image_archives_version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh packaging/export-image-archives.sh "$IMAGE" "$VERSION" images
+      - run: gh release upload "v$VERSION" images/*.tar.gz --clobber
 
   # PyPI is disabled for now: it only runs when started manually with
   # publish_pypi=true, after a trusted publisher is registered on PyPI
