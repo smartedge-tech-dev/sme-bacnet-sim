@@ -520,7 +520,7 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
   下载 `sme-bacnet-sim-<ver>-linux-<arch>.tar.gz`（`amd64` / `arm64` / `arm-v7`），用 FTP 等传上去后直接 `docker load -i`
   （无需先解压）。详见 `docs/zh/cloning.md`。
 
-  有 Python 3.10+ 时，从源码检出 `pip install .`（venv 或 `pip install --user .`）。PyInstaller 可执行文件只有 x86-64，不覆盖 ARM。
+  有 Python 3.10+ 时，从源码检出 `pip install .`（venv 或 `pip install --user .`）。PyInstaller 可执行文件只有 x86-64 的 Windows 版（没有 Linux / macOS / ARM 版）。
 - **目标**：`--who-is LOW-HIGH`（本地广播）、`--address IP[:PORT]`（单播；配合 `--devices ID` 完全不发 Who-Is）、`--network N`（配合 `--address` 时为通往网络 N 的路由器）、`--devices ID,...`，至少给一个。
 - **跨子网**：`--foreign-bbmd HOST[:PORT]`（及 `--foreign-ttl`）把客户端作为 foreign device 注册到 BBMD，使广播的 I-Am 应答能到达，例如 `clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302`。
 - **其他选项**：`--ip`、`--port`（默认 47808）、`--client-device-id`（默认 4194300）、`--rate`、`--timeout`、`--retries`、`--no-rpm`、`--object-list-file`（读不出 object-list 的设备的对象表）、`--no-keep-ids`、`--resume`、`-o OUT.yaml`。

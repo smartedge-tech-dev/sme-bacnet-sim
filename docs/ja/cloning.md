@@ -53,8 +53,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
 
 Python 3.10 以上がある場合、チェックアウトまたはソースアーカイブから
 `python3 -m venv venv && venv/bin/pip install .`（venv なしなら `pip install --user .`）でインストールし、
-`sme-bacnet-sim clone ...` を実行します。リリースの PyInstaller 実行ファイルは x86-64 の Windows / Linux / macOS 向けだけで、
-ARM のゲートウェイには対応していません。
+`sme-bacnet-sim clone ...` を実行します。リリースの PyInstaller 実行ファイルは x86-64 の Windows 向けだけです。
+Linux / macOS / ARM のゲートウェイでは Python または Docker イメージを使ってください。
 
 ## 使い方
 

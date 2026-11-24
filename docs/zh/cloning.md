@@ -46,8 +46,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
 ### pip（次要方式）
 
 有 Python 3.10 以上时，从源码检出或源码包安装：`python3 -m venv venv && venv/bin/pip install .`（不用 venv 时
-`pip install --user .`），然后运行 `sme-bacnet-sim clone ...`。发布版的 PyInstaller 可执行文件只面向 x86-64 的
-Windows / Linux / macOS，不覆盖 ARM 网关。
+`pip install --user .`），然后运行 `sme-bacnet-sim clone ...`。发布版的 PyInstaller 可执行文件只有 x86-64 的
+Windows 版；Linux / macOS / ARM 网关请用 Python 或 Docker 镜像。
 
 ## 用法
 

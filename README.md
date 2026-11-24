@@ -700,8 +700,8 @@ offline. Full reference: `docs/en/cloning.md`.
   `sme-bacnet-sim-<ver>-linux-<arch>.tar.gz` (`amd64` / `arm64` / `arm-v7`) from the GitHub Release, copy it over
   (e.g. FTP) and `docker load -i` it as is (no need to gunzip). See `docs/en/cloning.md`.
 
-  With Python 3.10+: `pip install .` (venv or `pip install --user .`) from a checkout. The PyInstaller executables
-  are x86-64 only and do not cover ARM.
+  With Python 3.10+: `pip install .` (venv or `pip install --user .`) from a checkout. The release only ships a
+  PyInstaller executable for x86-64 Windows (no Linux / macOS / ARM executable).
 - **Targets**: `--who-is LOW-HIGH` (local broadcast), `--address IP[:PORT]` (unicast; with `--devices ID` no Who-Is
   at all), `--network N` (with `--address`: the router to network N), `--devices ID,...`. One is required.
 - **Across subnets**: `--foreign-bbmd HOST[:PORT]` (and `--foreign-ttl`) registers the client as a foreign device

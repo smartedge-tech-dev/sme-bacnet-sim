@@ -53,8 +53,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
 ### pip (secondary path)
 
 Where Python 3.10+ is available, from a checkout or source archive: `python3 -m venv venv && venv/bin/pip install .`
-(or without a venv: `pip install --user .`), then `sme-bacnet-sim clone ...`. The PyInstaller executables of the
-releases are built for x86-64 Windows / Linux / macOS only and do not cover ARM gateways.
+(or without a venv: `pip install --user .`), then `sme-bacnet-sim clone ...`. The release only ships a PyInstaller
+executable for x86-64 Windows; on Linux / macOS / ARM gateways use Python or the Docker image.
 
 ## Usage
 

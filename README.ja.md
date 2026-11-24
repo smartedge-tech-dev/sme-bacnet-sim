@@ -685,7 +685,7 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
   ダウンロードし、FTP などで転送してそのまま `docker load -i` します（gunzip 不要）。詳細は `docs/ja/cloning.md`。
 
   Python 3.10 以上があれば、チェックアウトから `pip install .`（venv または `pip install --user .`）。PyInstaller 実行ファイルは
-  x86-64 のみで ARM には対応していません。
+  x86-64 の Windows 向けのみです（Linux / macOS / ARM 向けはありません）。
 - **対象**: `--who-is LOW-HIGH`（ローカルブロードキャスト）、`--address IP[:PORT]`（ユニキャスト。`--devices ID` と併用すると
   Who-Is なし）、`--network N`（`--address` と併用でネットワーク N へのルータ）、`--devices ID,...`。いずれかが必須です。
 - **サブネット越え**: `--foreign-bbmd HOST[:PORT]`（と `--foreign-ttl`）で BBMD にフォーリンデバイスとして登録し、ブロードキャストの
