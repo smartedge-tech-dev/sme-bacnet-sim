@@ -125,6 +125,9 @@ def select_points(args: argparse.Namespace) -> List[Point]:
                 raise ValueError(f"{p.column}: {p.type} has no recordable present-value")
     else:
         raise ValueError("select points: -c CONFIG (all points, or --points NAME,...) or --points TYPE:INSTANCE,...")
+    if not pts and args.trend_log:
+        raise ValueError(f"{args.config}: no trend-log objects (the device keeps no Trend Log to read); record by "
+                         f"polling instead (without --trend-log)")
     if not pts:
         raise ValueError("no points selected")
     cols = [p.column for p in pts]
@@ -436,7 +439,13 @@ async def record_trend_logs(client, found, by_dev, out: Path, header: List[str],
             try:
                 ref = await client.read(addr, p.oid, "log-device-object-property")
                 src = str(ref.objectIdentifier[0])
-            except Exception:
+            except (ErrorRejectAbortNack, asyncio.TimeoutError) as e:  # bacpypes3 errors are BaseException
+                if "unknown-object" in str(e):
+                    warn(f"{p.column} ({p.oid}): no such Trend Log on device {dev}; column left empty")
+                    series[p.column] = {}
+                    continue
+                src = None
+            except (AttributeError, TypeError, IndexError):
                 src = None
             try:
                 recs = await read_log(client, addr, p.oid)

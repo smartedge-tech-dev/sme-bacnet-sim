@@ -172,3 +172,8 @@ def test_cli_errors(tmp_path, capsys):
     assert main(["record", "--address", "127.0.0.1", "--points", "ai:1", "--interval", "0.5",
                  "-o", str(tmp_path / "x.csv")]) == 2
     assert "at least 1 second" in capsys.readouterr().err
+    cfg = tmp_path / "no-tl.yaml"
+    cfg.write_text("devices: [{device_id: 1, name: D, objects: [{type: ai, name: T}]}]\n", encoding="utf-8")
+    assert main(["record", "--address", "127.0.0.1", "-c", str(cfg), "--trend-log",
+                 "-o", str(tmp_path / "x.csv")]) == 2
+    assert "no trend-log objects" in capsys.readouterr().err
