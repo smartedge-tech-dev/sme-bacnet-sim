@@ -63,6 +63,9 @@ markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: [.]
+      check_paths: true
 
 nav:
   - index.md
@@ -89,6 +92,7 @@ nav:
   - Reference:
       - not-supported.md
       - development.md
+      - changelog.md
   - About:
       - commercial-support.md
       - license.md

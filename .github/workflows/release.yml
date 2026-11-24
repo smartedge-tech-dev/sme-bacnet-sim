@@ -27,9 +27,26 @@ jobs:
       - name: Rename artifact with version
         shell: bash
         run: mv dist/sme-bacnet-sim.exe "dist/sme-bacnet-sim-${GITHUB_REF_NAME}-windows.exe"
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v ver="$ver" '
+            /^## \[/ { if (found) exit; if (index($0, "## [" ver "]") == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if grep -q '[^[:space:]]' release-notes.md; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No CHANGELOG.md section for $ver; falling back to generated notes"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/sme-bacnet-sim-*-windows.exe
+          body_path: ${{ steps.notes.outputs.found == 'true' && 'release-notes.md' || '' }}
+          generate_release_notes: ${{ steps.notes.outputs.found != 'true' }}
 
   docker:
     if: github.event_name == 'push'

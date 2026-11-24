@@ -1,0 +1,63 @@
+# Changelog
+
+All notable changes to SME BACnetSim are documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+## [0.1.2] - 2026-11-24
+
+### Fixed
+- Event log: messages published around a reload (`pasted ...`, `duplicated ...`, `imported ...`) were shown
+  twice in the UI. WebSocket events now carry a sequence number and a message already contained in a
+  snapshot is not sent again.
+- Calendar date lists and Schedule lists of object property references written by `WriteProperty`,
+  `AddListElement` and `RemoveListElement` are now kept in the config (Save / Export). New schedule
+  references re-target the schedule; references the schedule cannot write are rejected with
+  `value-out-of-range`.
+- Recipient lists (and the new list writes) of objects that come from a template are kept as an
+  override entry, like alarm properties.
+- `Weekly_Schedule`, `Exception_Schedule` and `Schedule_Default` written by a BACnet client are converted
+  back to the config keys `weekly` / `exceptions` / `default` and kept for Save / Export. Content the
+  config cannot reproduce is logged and not kept.
+- Schedules that come from a template get an override entry that also carries `weekly` / `exceptions`,
+  so persisted write targets of template schedules are valid.
+- macOS / BSD: the interface netmask is read from `ifconfig` instead of falling back to /24.
+
+### Changed
+- CI now also runs on macOS.
+
+## [0.1.1] - 2026-11-24
+
+### Fixed
+- Windows exe failed to start (`attempted relative import with no known parent package`): PyInstaller now
+  starts from an absolute-import entry script.
+
+## [0.1.0] - 2026-11-24
+
+First public release.
+
+> **Known issue:** the Windows exe of this release does not start. Use 0.1.1 or later.
+
+### Added
+- Many simulated devices on one UDP port: a built-in BACnet router (default device 4194000) with the
+  devices on a virtual network (default 100), so one Who-Is discovers them all. Normal and BBMD modes,
+  Foreign Device registration with an external BBMD (`network.foreign_device`, `--foreign-bbmd`).
+- Realistic behaviors (room temperature, energy integration, lighting feedback, PV day curve with
+  curtailment) and device templates; commandable outputs with a 16-level priority array, out-of-service,
+  COV increments, Device and Network Port objects.
+- Configuration in YAML / JSON, EDE export, editing a device as YAML in the browser, adding devices from
+  templates, saving back to the config file.
+- COV subscriptions; alarms with Notification Class and Event Enrollment objects.
+- Schedule and Calendar objects, Trend Log, Accumulator, Pulse Converter and Loop.
+- File and Program objects with Atomic Read/Write File services, Life Safety Point / Zone.
+- Device management services, TextMessage, PrivateTransfer, AddListElement / RemoveListElement.
+- Live web UI: values over WebSocket, trend chart per point, event log of BACnet and UI writes,
+  property table, copy and paste of devices and objects; English, Japanese and Simplified Chinese.
+- Distribution as a Windows exe and a Docker image (`ghcr.io/smartedge-tech-dev/sme-bacnet-sim`).
+
+[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/tag/v0.1.0
