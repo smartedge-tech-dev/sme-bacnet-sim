@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
 ### Added
 - CSV time-series replay behavior (#3): `{type: replay, file: data/day.csv, column: oat, interpolate: linear|step, loop: true, offset: "06:00:00"}` plays a CSV column on the simulated clock (follows `time_scale`); one CSV can feed many points, parsed once. Timestamps: `HH:MM:SS`, seconds or ISO datetime. The point row shows the replay position. Example: `configs/replay-example.yaml`.
 - Excel point-list import / export (#2): File → Import accepts `.xlsx`, File → Export → Excel point list and
@@ -75,7 +77,8 @@ First public release.
   property table, copy and paste of devices and objects; English, Japanese and Simplified Chinese.
 - Distribution as a Windows exe and a Docker image (`ghcr.io/smartedge-tech-dev/sme-bacnet-sim`).
 
-[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/tag/v0.1.0
