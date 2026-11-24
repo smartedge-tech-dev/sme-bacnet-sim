@@ -269,6 +269,9 @@ class Point:
             d["cv"] = float(self.obj.controlledVariableValue)
         if self.error:
             d["error"] = self.error
+        progress = getattr(self.behavior, "progress", None)
+        if progress is not None:
+            d["replay"] = progress()
         if self.alarm is not None:
             d["event_state"] = self.alarm.state
             d["unacked"] = self.alarm.unacked
@@ -834,11 +837,16 @@ class Engine:
 
     # ---- build / teardown
 
+    @property
+    def base_dir(self) -> Path:
+        """Directory that relative config paths (File objects, replay CSVs) resolve against."""
+        return Path(self.config_path).resolve().parent if self.config_path else Path.cwd()
+
     def _prepare(self, config: SimConfig) -> Dict[int, DeviceRuntime]:
         """Expand templates and build all objects; raises on any config error."""
         hist = config.simulation.history_size
         width = 1 if len(config.devices) < 250 else 2
-        base_dir = Path(self.config_path).resolve().parent if self.config_path else Path.cwd()
+        base_dir = self.base_dir
         runtimes: Dict[int, DeviceRuntime] = {}
         for idx, dev in enumerate(config.devices, start=1):
             points = []
@@ -854,7 +862,7 @@ class Engine:
                     later.append(oc)  # built once all value objects exist
                     continue
                 try:
-                    behavior = make_behavior(oc.behavior)
+                    behavior = make_behavior(oc.behavior, base_dir, oc.type)
                     obj = build_object(oc)
                 except Exception as e:
                     raise ValueError(f"{dev.name}/{oc.name}: {e}") from e
@@ -2008,7 +2016,7 @@ class Engine:
                     await p.obj.write_property("presentValue", Null(()), priority=prio)
             else:
                 p.obj.presentValue = init.presentValue
-            p.behavior = make_behavior(p.cfg.behavior)
+            p.behavior = make_behavior(p.cfg.behavior, self.base_dir, p.cfg.type)
             if p.control is not None:
                 p.control.reset()
             p.error = None

@@ -562,6 +562,31 @@ setting の動作、CreateObject / DeleteObject による Life Safety オブジ�
 | `follow` | `target tau noise` | 目標値への一次遅れ: `"SetPoint if OnOff else 30"` |
 | `counter` | `rate` | 単位/秒を積算: `"Power / 3600"` → kWh |
 | `pulse` | `rate` | Accumulator のパルス数/秒（端数は繰り越し）: `"ActivePower * 100 / 3600"` |
+| `replay` | `file column interpolate loop offset` | CSV 時系列の再生（下記） |
+
+**CSV 再生**（`replay`）: CSV の 1 列目がタイムスタンプ（経過時間 `HH:MM:SS` または秒、あるいは ISO 日時）、
+残りの列が値の系列です。各ポイントが `file` と `column` を指定するので、1 つの CSV で複数ポイントを駆動できます
+（ファイルは 1 回だけ解析）。相対パスは設定ファイルのディレクトリ基準です。再生時刻 0 は先頭行で、シミュレーション
+時計に従って進む（`simulation.time_scale` に追従）。`interpolate: linear`（既定）または `step`（直前の行を保持）。
+バイナリ / マルチステートは常に step 保持（`active` / `inactive` / `1` / `0`、状態番号）。`offset` で途中から開始
+（`"06:00:00"`、秒、ISO CSV なら ISO 日時）、`loop: true` で繰り返し、そうでなければ最終値を保持。空セルは直前の値を
+保持します。不正なタイムスタンプ・逆行する行・存在しない列は設定読込時にエラーになります。ポイント行に再生位置
+（例 `replay 06:12:30 (26%)`）を表示。例: `configs/replay-example.yaml` と `configs/data/day-profile.csv`:
+
+```csv
+time,oat,rh,occupied,mode
+00:00:00,13.8,71,inactive,1
+08:00:00,17.2,64,active,2
+19:00:00,20.2,56,inactive,1
+24:00:00,13.8,71,inactive,1
+```
+
+```yaml
+- {type: ai, name: OutdoorTemp, units: degreesCelsius,
+   behavior: {type: replay, file: data/day-profile.csv, column: oat, loop: true, offset: "06:00:00"}}
+- {type: bi, name: Occupied,
+   behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
+```
 
 式はサンドボックス化された Python の式です。使用できる名前: デバイスのオブジェクト名、`t`（シミュレーション秒）、
 `dt`、`hour`（シミュレーション時計、0–24）、他のデバイスを読み取る `pv("Device", "Object")`、および

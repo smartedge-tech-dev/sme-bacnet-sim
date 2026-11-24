@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- CSV time-series replay behavior (#3): `{type: replay, file: data/day.csv, column: oat, interpolate: linear|step, loop: true, offset: "06:00:00"}` plays a CSV column on the simulated clock (follows `time_scale`); one CSV can feed many points, parsed once. Timestamps: `HH:MM:SS`, seconds or ISO datetime. The point row shows the replay position. Example: `configs/replay-example.yaml`.
 - Excel point-list import / export (#2): File → Import accepts `.xlsx`, File → Export → Excel point list and
   File → Download blank Excel template (`Devices` / `Points` / `StateTexts` / `Network` sheets). Import errors name
   the sheet, row and column; warnings go to the event log. New dependency: `openpyxl`. See `docs/en/excel.md`.

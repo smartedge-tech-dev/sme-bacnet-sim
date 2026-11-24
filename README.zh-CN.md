@@ -425,6 +425,30 @@ CreateObject / DeleteObject 创建 / 删除 Life Safety 对象。
 | `follow` | `target tau noise` | 对目标的一阶滞后：`"SetPoint if OnOff else 30"` |
 | `counter` | `rate` | 按 单位/秒 积分：`"Power / 3600"` → kWh |
 | `pulse` | `rate` | Accumulator 每秒脉冲数（小数部分结转）：`"ActivePower * 100 / 3600"` |
+| `replay` | `file column interpolate loop offset` | 回放 CSV 时间序列（见下） |
+
+**CSV 回放**（`replay`）：CSV 第 1 列是时间戳（经过时间 `HH:MM:SS` 或秒数，或 ISO 日期时间），其余各列是数值序列。
+每个点指定 `file` 和 `column`，因此一个 CSV 可驱动多个点（文件只解析一次）。相对路径以配置文件所在目录为基准。
+回放时刻 0 是第一行，随仿真时钟推进（跟随 `simulation.time_scale`）。`interpolate: linear`（默认）或 `step`
+（保持上一行）；二值 / 多态点始终按 step 保持（`active` / `inactive` / `1` / `0`、状态编号）。`offset` 从中途开始
+（`"06:00:00"`、秒数，ISO CSV 可用 ISO 日期时间），`loop: true` 循环播放，否则保持最后一个值。空单元格保持上一个值。
+非法时间戳、时间倒退的行、不存在的列在加载配置时报错。点的行显示回放位置（例 `replay 06:12:30 (26%)`）。
+示例：`configs/replay-example.yaml` 与 `configs/data/day-profile.csv`：
+
+```csv
+time,oat,rh,occupied,mode
+00:00:00,13.8,71,inactive,1
+08:00:00,17.2,64,active,2
+19:00:00,20.2,56,inactive,1
+24:00:00,13.8,71,inactive,1
+```
+
+```yaml
+- {type: ai, name: OutdoorTemp, units: degreesCelsius,
+   behavior: {type: replay, file: data/day-profile.csv, column: oat, loop: true, offset: "06:00:00"}}
+- {type: bi, name: Occupied,
+   behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
+```
 
 表达式是沙箱化的 Python 表达式。可用名称：设备内的对象名称、`t`（仿真秒数）、`dt`、`hour`（仿真时钟，0–24）、用于读取其他设备的 `pv("Device", "Object")`，以及 `sin cos exp log sqrt pi abs min max round clamp random uniform noise gauss`。
 

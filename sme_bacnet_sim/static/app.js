@@ -736,7 +736,7 @@ function renderRowInner(d, o) {
   const tr = document.createElement("tr");
   tr.id = `row-${d.device_id}-${o.k}`;
   if (S.trend && S.trend.d === d.device_id && S.trend.k === o.k) tr.className = "sel";
-  const beh = o.behavior ? `<span title="${esc(JSON.stringify(o.behavior_spec))}">${esc(o.behavior)}</span>` : "";
+  const beh = o.behavior ? `<span title="${esc(JSON.stringify(o.behavior_spec))}">${esc(o.behavior)}</span><span class="rp"></span>` : "";
   tr.innerHTML = `
     <td class="nm">${esc(o.name)}${o.alarm ? '<span class="abox"></span>' : ""}${o.description ? `<small>${esc(o.description)}</small>` : ""}</td>
     <td class="obj">${SHORT[o.type]}:${o.instance}</td>
@@ -811,6 +811,8 @@ function updateRow(tr, o, flash = true) {
   if (ack) ack.hidden = !o.unacked;
   const em = tr.querySelector(".errmark");
   em.textContent = o.error ? "⚠" : ""; em.title = o.error || "";
+  const rp = tr.querySelector(".beh .rp");  // replay behavior: current replay time and progress
+  if (rp) rp.textContent = o.replay ? ` ${o.replay.t} (${o.replay.pct}%)` : "";
   const sel = tr.querySelector(".cmd select");
   if (sel && document.activeElement !== sel) sel.value = o.value;
   const inp = tr.querySelector(".cmd input");
@@ -866,7 +868,7 @@ function applyChanges(msg) {
       }
       continue;
     }
-    Object.assign(o, { value: c.value, oos: c.oos, priority: c.priority, error: c.error });
+    Object.assign(o, { value: c.value, oos: c.oos, priority: c.priority, error: c.error, replay: c.replay });
     if ("event_state" in c) {
       if (o.event_state !== c.event_state || o.unacked !== c.unacked) alarmsDirty = true;
       Object.assign(o, { event_state: c.event_state, unacked: c.unacked });

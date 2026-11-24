@@ -9,10 +9,14 @@ replaced by ``_``); other devices are reachable with ``pv("Device", "Object")``.
 from __future__ import annotations
 
 import ast
+import bisect
+import csv
 import math
 import random as _random
 import re
-from typing import Any, Callable, Dict, Optional
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BoolOp, ast.BinOp, ast.UnaryOp, ast.Compare, ast.IfExp,
@@ -160,6 +164,173 @@ class Pulse(Behavior):
         return int(current or 0) + n
 
 
+# --------------------------------------------------------------------------- CSV replay
+
+_HMS = re.compile(r"^(\d+):([0-5]?\d)(?::([0-5]?\d(?:\.\d*)?))?$")
+
+
+def parse_elapsed(value: Any) -> Optional[float]:
+    """``HH:MM:SS`` / ``HH:MM`` / plain seconds -> seconds; None if it is neither."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    s = str(value).strip()
+    m = _HMS.match(s)
+    if m:
+        return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3) or 0)
+    try:
+        v = float(s)
+    except ValueError:
+        return None
+    return v if math.isfinite(v) else None
+
+
+def parse_iso(value: Any) -> Optional[float]:
+    """ISO 8601 datetime -> epoch seconds; None if it is not one."""
+    try:
+        return datetime.fromisoformat(str(value).strip().replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def fmt_elapsed(sec: float) -> str:
+    sec = int(sec)
+    return f"{sec // 3600:02d}:{sec // 60 % 60:02d}:{sec % 60:02d}"
+
+
+class ReplayTable:
+    """A parsed replay CSV: times relative to the first row (seconds) and one value list per column."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        try:
+            with open(path, newline="", encoding="utf-8-sig") as f:
+                rows = [r for r in csv.reader(f) if any(c.strip() for c in r)]
+        except OSError as e:
+            raise ValueError(f"replay: cannot read {path}: {e.strerror or e}") from None
+        if len(rows) < 2:
+            raise ValueError(f"replay: {path}: needs a header row and at least one data row")
+        header = [h.strip() for h in rows[0]]
+        if len(header) < 2:
+            raise ValueError(f"replay: {path}: needs a timestamp column and at least one value column")
+        self.columns: Dict[str, List[Any]] = {h: [] for h in header[1:] if h}
+        times: List[float] = []
+        self.iso = parse_elapsed(rows[1][0]) is None  # format decided by the first data row
+        for n, row in enumerate(rows[1:], start=2):
+            cell = row[0].strip() if row else ""
+            t = parse_iso(cell) if self.iso else parse_elapsed(cell)
+            if t is None:
+                kind = "an ISO datetime" if self.iso else "HH:MM:SS or seconds"
+                raise ValueError(f"replay: {path} line {n}: bad timestamp {cell!r} (expected {kind})")
+            if times and t < times[-1]:
+                raise ValueError(f"replay: {path} line {n}: timestamp {cell!r} goes backwards")
+            times.append(t)
+            for i, h in enumerate(header[1:], start=1):
+                if not h:
+                    continue
+                raw = row[i].strip() if i < len(row) else ""
+                col = self.columns[h]
+                if raw == "":
+                    if not col:
+                        raise ValueError(f"replay: {path} line {n}: column {h!r} has no value")
+                    col.append(col[-1])  # an empty cell holds the previous value
+                    continue
+                try:
+                    col.append(float(raw))
+                except ValueError:
+                    col.append(raw)  # e.g. active / inactive for binary points
+        self.t0 = times[0]
+        self.times = [t - self.t0 for t in times]
+        self.duration = self.times[-1]
+
+    def column(self, name: str) -> List[Any]:
+        if name not in self.columns:
+            raise ValueError(f"replay: {self.path}: no column {name!r} (columns: {', '.join(self.columns)})")
+        return self.columns[name]
+
+
+_TABLES: Dict[Path, Tuple[Tuple[float, int], ReplayTable]] = {}
+
+
+def load_table(path: Path) -> ReplayTable:
+    """Parse a replay CSV once per path (shared by all points); re-parsed when the file changes."""
+    path = path.resolve()
+    try:
+        st = path.stat()
+    except OSError as e:
+        raise ValueError(f"replay: cannot read {path}: {e.strerror or e}") from None
+    sig = (st.st_mtime, st.st_size)
+    hit = _TABLES.get(path)
+    if hit and hit[0] == sig:
+        return hit[1]
+    table = ReplayTable(path)
+    _TABLES[path] = (sig, table)
+    return table
+
+
+class Replay(Behavior):
+    """Plays one column of a CSV time series on the simulation clock.
+
+    Replay time 0 is the first row. It advances with the simulated time (so it follows
+    ``simulation.time_scale``), starts at ``offset`` and optionally loops; past the end without
+    ``loop`` the last value is held. Binary / multi-state points always step-hold.
+    """
+
+    def __init__(self, spec, base_dir: Optional[Path] = None, obj_type: Optional[str] = None):
+        super().__init__(spec)
+        p = Path(str(spec["file"]))
+        if not p.is_absolute():
+            p = (base_dir or Path.cwd()) / p
+        self.table = load_table(p)
+        self.values = self.table.column(str(spec["column"]))
+        mode = str(spec.get("interpolate", "linear")).lower()
+        if mode not in ("linear", "step"):
+            raise ValueError(f"replay: interpolate must be 'linear' or 'step', got {mode!r}")
+        discrete = bool(obj_type) and obj_type.startswith(("binary", "multi-state"))
+        self.linear = mode == "linear" and not discrete
+        self.loop = bool(spec.get("loop", False))
+        off = spec.get("offset", 0)
+        o = parse_elapsed(off)
+        if o is None:
+            iso = parse_iso(off)
+            if iso is None:
+                raise ValueError(f"replay: bad offset {off!r} (HH:MM:SS, seconds or an ISO datetime)")
+            if not self.table.iso:
+                raise ValueError("replay: an ISO datetime offset needs a CSV with ISO timestamps")
+            o = iso - self.table.t0
+        self.offset = max(0.0, o)
+        self.start: Optional[float] = None
+        self.pos = min(self.offset, self.table.duration)
+
+    def position(self, t: float) -> float:
+        """Simulated time -> replay time (seconds from the first row)."""
+        pos = self.offset + (t - self.start)
+        dur = self.table.duration
+        if self.loop and dur > 0:
+            return pos % dur
+        return min(pos, dur)
+
+    def value_at(self, pos: float) -> Any:
+        times, vals = self.table.times, self.values
+        i = max(0, bisect.bisect_right(times, pos) - 1)
+        if i >= len(times) - 1 or not self.linear:
+            return vals[i]
+        a, b = vals[i], vals[i + 1]
+        t0, t1 = times[i], times[i + 1]
+        if not isinstance(a, float) or not isinstance(b, float) or t1 <= t0:
+            return a
+        return a + (b - a) * (pos - t0) / (t1 - t0)
+
+    def step(self, names, current, dt):
+        if self.start is None:
+            self.start = names["t"] - dt  # replay time `offset` = when the behavior started
+        self.pos = self.position(names["t"])
+        return self.value_at(self.pos)
+
+    def progress(self) -> Dict[str, Any]:
+        dur = self.table.duration
+        return {"t": fmt_elapsed(self.pos), "pct": int(100 * self.pos / dur) if dur > 0 else 100}
+
+
 BEHAVIORS = {
     "sine": Sine,
     "random": Random,
@@ -168,10 +339,13 @@ BEHAVIORS = {
     "follow": Follow,
     "counter": Counter,
     "pulse": Pulse,
+    "replay": Replay,
 }
 
 
-def make_behavior(spec: Optional[Dict[str, Any]]) -> Optional[Behavior]:
+def make_behavior(spec: Optional[Dict[str, Any]], base_dir: Optional[Path] = None,
+                  obj_type: Optional[str] = None) -> Optional[Behavior]:
+    """Build a behavior; ``base_dir`` resolves relative replay files (the config file's directory)."""
     if not spec:
         return None
     kind = spec.get("type")
@@ -181,6 +355,8 @@ def make_behavior(spec: Optional[Dict[str, Any]]) -> Optional[Behavior]:
     if cls is None:
         raise ValueError(f"unknown behavior type: {kind!r} (known: {', '.join(BEHAVIORS)})")
     try:
+        if cls is Replay:
+            return Replay(spec, base_dir, obj_type)
         return cls(spec)
     except KeyError as e:
         raise ValueError(f"behavior {kind!r} missing parameter {e}") from None

@@ -574,6 +574,33 @@ individual properties beyond the checks above.
 | `follow` | `target tau noise` | first-order lag to a target: `"SetPoint if OnOff else 30"` |
 | `counter` | `rate` | integrates units/second: `"Power / 3600"` → kWh |
 | `pulse` | `rate` | accumulator pulses per second (fractions carried over): `"ActivePower * 100 / 3600"` |
+| `replay` | `file column interpolate loop offset` | play a CSV time series (below) |
+
+**CSV replay** (`replay`): the first CSV column is the timestamp — elapsed time (`HH:MM:SS` or seconds) or an
+ISO datetime — and every other column is a value series. Each point names the `file` and its `column`, so one CSV
+can drive many points (the file is parsed once). Relative paths resolve against the config file's directory.
+Replay time 0 is the first row and advances with the simulated clock, so it follows `simulation.time_scale`.
+`interpolate: linear` (default) or `step` (hold the previous row); binary and multi-state points always step-hold
+(`active` / `inactive` / `1` / `0`, state numbers). `offset` starts mid-file (`"06:00:00"`, seconds, or an ISO
+datetime for ISO CSVs); `loop: true` repeats, otherwise the last value is held. An empty cell holds the previous
+value. Bad timestamps, rows going backwards or an unknown column are reported when the config is loaded. The
+point row shows the replay position, e.g. `replay 06:12:30 (26%)`. Example: `configs/replay-example.yaml` with
+`configs/data/day-profile.csv`:
+
+```csv
+time,oat,rh,occupied,mode
+00:00:00,13.8,71,inactive,1
+08:00:00,17.2,64,active,2
+19:00:00,20.2,56,inactive,1
+24:00:00,13.8,71,inactive,1
+```
+
+```yaml
+- {type: ai, name: OutdoorTemp, units: degreesCelsius,
+   behavior: {type: replay, file: data/day-profile.csv, column: oat, loop: true, offset: "06:00:00"}}
+- {type: bi, name: Occupied,
+   behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
+```
 
 Expressions are sandboxed Python expressions. Available names: the device's object names, `t` (sim seconds),
 `dt`, `hour` (sim clock, 0–24), `pv("Device", "Object")` to read another device, and

@@ -1,0 +1,25 @@
+# SME BACnetSim replay example: one recorded day (configs/data/day-profile.csv) drives four points.
+# Relative CSV paths resolve against this file's directory. time_scale 60 plays the day in 24 minutes.
+network:
+  ip: auto
+  port: 47808
+  virtual_network: 100
+  router: {device_id: 4194000}
+
+simulation:
+  tick_seconds: 1.0
+  time_scale: 60
+
+devices:
+  - device_id: 3001
+    name: Weather-Replay
+    objects:
+      - {type: ai, name: OutdoorTemp, units: degreesCelsius,
+         behavior: {type: replay, file: data/day-profile.csv, column: oat, loop: true, offset: "06:00:00"}}
+      - {type: ai, name: OutdoorRH, units: percentRelativeHumidity,
+         behavior: {type: replay, file: data/day-profile.csv, column: rh, loop: true, offset: "06:00:00"}}
+      - {type: bi, name: Occupied, active_text: Occupied, inactive_text: Vacant,
+         behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
+      - {type: msv, name: Mode, states: [Night, Day],
+         behavior: {type: replay, file: data/day-profile.csv, column: mode, loop: true, offset: "06:00:00",
+                    interpolate: step}}
