@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-24
+
 ### Added
 - BACnet network settings in the web UI (#6): *Edit → BACnet network…* (or a click on the status-bar address)
   picks the network adapter from the local IPv4 interfaces (or auto-detect) and sets the UDP port, IP-side / virtual
@@ -100,7 +102,8 @@ First public release.
   property table, copy and paste of devices and objects; English, Japanese and Simplified Chinese.
 - Distribution as a Windows exe and a Docker image (`ghcr.io/smartedge-tech-dev/sme-bacnet-sim`).
 
-[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.1...v0.1.2
