@@ -21,7 +21,7 @@ Record_Count 与实际记录数的一致性检查。这些细节只能依据付�
 
 ## [Schedule 与 Calendar](schedules-calendars.md)
 
-不支持：写入模拟器之外设备上的目标（没有网络 WriteProperty），以及重新读取由客户端写入的 `list-of-object-property-references`（目标来自配置）。
+不支持：写入模拟器之外设备上的目标（没有网络 WriteProperty）。
 
 ## [报警（Intrinsic Reporting）](alarms.md)
 

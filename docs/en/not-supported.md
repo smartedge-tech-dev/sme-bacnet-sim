@@ -28,8 +28,7 @@ subscriptions to them / `cov-resubscription-interval`), and log-status / time-ch
 
 ## [Schedules and calendars](schedules-calendars.md)
 
-Not supported: writing to targets on devices outside the simulator (no network WriteProperty), and
-re-reading `list-of-object-property-references` written by a client (targets come from the config).
+Not supported: writing to targets on devices outside the simulator (no network WriteProperty).
 
 ## [Alarms (intrinsic reporting)](alarms.md)
 

@@ -298,12 +298,11 @@ Schedule の `present-value` が設定され、その値が各対象に
 対象のデバイスの ReinitializeDevice は、スケジュールされた値を再コマンドします。COV サブスクリプションは維持されます。`weekly-schedule`、`exception-schedule`、
 `schedule-default` は BACnet 経由で書き込み可能で、次の tick で反映されます（型が誤った値は
 `reliability` を `configuration-error` にします）。例外エントリには日付、日付範囲、weekNDay、
-Calendar 参照を使用できます。Calendar の `date-list` も書き込み可能です。Schedule 自身の
+Calendar 参照を使用できます。Calendar の `date-list` も書き込み可能です。`list-of-object-property-references` を書き込むと対象が変わります（このデバイスまたは他のシミュレートされたデバイスにある Schedule と同種の出力 / 値オブジェクトの present-value、またはシミュレータ外のデバイス。それ以外は `value-out-of-range`）。どちらも設定に保持されます（Save / Export）。Schedule 自身の
 `present-value` へのクライアント書き込み（Schedule のデータ型であること。そうでなければ `invalid-data-type`）は、すべての対象へ
 `priority_for_writing` で転送され、次のスケジュール時刻エントリまで保持されます。`out-of-service` の設定有無にかかわらず受け付けられます。
 
-サポートしていません: シミュレータ外のデバイス上の対象への書き込み（ネットワーク WriteProperty なし）、および
-クライアントが書き込んだ `list-of-object-property-references` の再読み取り（対象は設定ファイルから取得されます）。
+サポートしていません: シミュレータ外のデバイス上の対象への書き込み（ネットワーク WriteProperty なし）。
 
 `lighting` テンプレートには `Zone1_Cmd` を切り替える Schedule（平日 08:00 ON、18:00 OFF）があり、
 `split_ac` テンプレートには `OnOff` 用の Schedule（平日 09:00–18:00）があります。テンプレートパラメータ
@@ -538,8 +537,8 @@ setting の動作、CreateObject / DeleteObject による Life Safety オブジ�
   エラー（Add/RemoveListElement-Error）：未知のオブジェクト / プロパティ、`services` / `property-is-not-a-list`
   （リストでない）、`property` / `property-is-not-an-array`（配列インデックス指定）、`write-access-denied`、
   `invalid-data-type`、削除時にリストにない要素は `services` / `list-element-not-found`（最初の該当要素の
-  1 始まりの番号付き）。設定への書き戻し：zone-members と recipient-list（通知送信にも即反映）。date-list と
-  list-of-object-property-references は WriteProperty と同様に実行中のオブジェクトだけが変わります。
+  1 始まりの番号付き）。設定への書き戻し（WriteProperty と同様。テンプレート由来のオブジェクトは上書きエントリとして保持）：
+  zone-members、recipient-list（通知送信にも即反映）、date-list、list-of-object-property-references（Schedule は新しい対象へ書き込みます）。
 
 ```yaml
   - device_id: 1006

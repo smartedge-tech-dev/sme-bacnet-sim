@@ -19,8 +19,8 @@
   エラー（Add/RemoveListElement-Error）：未知のオブジェクト / プロパティ、`services` / `property-is-not-a-list`
   （リストでない）、`property` / `property-is-not-an-array`（配列インデックス指定）、`write-access-denied`、
   `invalid-data-type`、削除時にリストにない要素は `services` / `list-element-not-found`（最初の該当要素の
-  1 始まりの番号付き）。設定への書き戻し：zone-members と recipient-list（通知送信にも即反映）。date-list と
-  list-of-object-property-references は WriteProperty と同様に実行中のオブジェクトだけが変わります。
+  1 始まりの番号付き）。設定への書き戻し（WriteProperty と同様。テンプレート由来のオブジェクトは上書きエントリとして保持）：
+  zone-members、recipient-list（通知送信にも即反映）、date-list、list-of-object-property-references（Schedule は新しい対象へ書き込みます）。
 
 ```yaml
   - device_id: 1006

@@ -54,7 +54,7 @@ from bacpypes3.errors import ExecutionError
 from bacpypes3.local.object import Object as _LocalObject
 from bacpypes3.local.schedule import ScheduleObject as _ScheduleObject, date_in_calendar_entry, match_date_range
 from bacpypes3.object import CalendarObject as _CalendarObject
-from bacpypes3.primitivedata import Date, Enumerated, Null, ObjectIdentifier, Real, Time, Unsigned
+from bacpypes3.primitivedata import Date, Enumerated, Null, ObjectIdentifier, ObjectType, Real, Time, Unsigned
 
 from .config import (
     ANALOG_TYPES, BINARY_TYPES, CALENDAR, INPUT_TYPES, OBJECT_TYPE_ALIASES, SCHEDULE, WEEKDAYS, WILDCARD,
@@ -115,6 +115,15 @@ def fmt_entry(ce: CalendarEntry) -> str:
         return f"{fmt_date(ce.dateRange.startDate)}..{fmt_date(ce.dateRange.endDate)}"
     m, w, d = tuple(ce.weeknday)
     return "weeknday " + "/".join("*" if x == WILDCARD else str(x) for x in (m, w, d))
+
+
+def entry_to_cfg(ce: CalendarEntry) -> Any:
+    """BACnetCalendarEntry -> calendar ``dates`` config entry (inverse of parse_calendar_entry)."""
+    if ce.date is not None:
+        return fmt_date(ce.date)
+    if ce.dateRange is not None:
+        return {"from": fmt_date(ce.dateRange.startDate), "to": fmt_date(ce.dateRange.endDate)}
+    return {"weeknday": ["*" if x == WILDCARD else x for x in tuple(ce.weeknday)]}
 
 
 # --------------------------------------------------------------------------- BACnet objects
@@ -430,13 +439,13 @@ def _parse_oid(s: str) -> Optional[ObjectIdentifier]:
         return None
 
 
-def build_schedule(dev: Any, oc: Any, points: List[Any], calendars: List[Calendar],
-                   devices: Any = ()) -> Schedule:
-    """Schedule object writing to value objects of this or another simulated device (``devices``: runtimes with
-    ``cfg`` / ``points``); raises ValueError on a bad reference / value."""
-    where = f"device {dev.name} ({dev.device_id}): schedule {oc.name}"
-    targets, labels, external, refs = [], [], [], []
-    for t in oc.targets or []:
+def resolve_targets(dev: Any, entries: Any, points: List[Any], devices: Any, where: str) -> Tuple[List, List, List, List]:
+    """Config ``targets`` -> (points, labels, external labels, DeviceObjectPropertyReferences); raises ValueError."""
+    targets: List[Any] = []
+    labels: List[str] = []
+    external: List[str] = []
+    refs: List[Any] = []
+    for t in entries or []:
         dref, name = (None, t) if isinstance(t, str) else (t["device"], str(t["object"]))
         if dref is None or dref in (dev.name, dev.device_id):
             other, pts = None, points
@@ -468,6 +477,38 @@ def build_schedule(dev: Any, oc: Any, points: List[Any], calendars: List[Calenda
         refs.append(DeviceObjectPropertyReference(objectIdentifier=(p.cfg.type, p.cfg.instance),
                                                   propertyIdentifier="present-value",
                                                   **({"deviceIdentifier": ("device", other.device_id)} if other else {})))
+    return targets, labels, external, refs
+
+
+def refs_to_targets(dev: Any, refs: Any, points: List[Any], devices: Any) -> List[Any]:
+    """List_Of_Object_Property_References written by a client -> config ``targets`` (raises ValueError)."""
+    out: List[Any] = []
+    for i, r in enumerate(refs or [], start=1):
+        if str(r.propertyIdentifier) != "present-value" or r.propertyArrayIndex is not None:
+            raise ValueError(f"reference {i}: only present-value (without array index) can be scheduled")
+        t, inst = str(ObjectType(r.objectIdentifier[0])), int(r.objectIdentifier[1])
+        dref = None if r.deviceIdentifier is None else int(r.deviceIdentifier[1])
+        if dref is None or dref == dev.device_id:
+            pts, other = points, None
+        else:
+            other = next((d for d in devices if d.cfg.device_id == dref), None)
+            if other is None:  # outside the simulator: kept as type:instance, never written
+                out.append({"device": dref, "object": f"{t}:{inst}"})
+                continue
+            pts = other.points
+        p = next((q for q in pts if (q.cfg.type, q.cfg.instance) == (t, inst)), None)
+        if p is None:
+            raise ValueError(f"reference {i}: no object {t}:{inst} on device {dref or dev.device_id}")
+        out.append(p.cfg.name if other is None else {"device": other.cfg.device_id, "object": p.cfg.name})
+    return out
+
+
+def build_schedule(dev: Any, oc: Any, points: List[Any], calendars: List[Calendar],
+                   devices: Any = ()) -> Schedule:
+    """Schedule object writing to value objects of this or another simulated device (``devices``: runtimes with
+    ``cfg`` / ``points``); raises ValueError on a bad reference / value."""
+    where = f"device {dev.name} ({dev.device_id}): schedule {oc.name}"
+    targets, labels, external, refs = resolve_targets(dev, oc.targets, points, devices, where)
     kinds = {_value_kind(p.cfg.type) for p in targets}
     if len(kinds) > 1:
         raise ValueError(f"{where}: targets mix value types ({', '.join(sorted(kinds))})")

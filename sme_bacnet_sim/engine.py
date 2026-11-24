@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import re
 import socket
 import sys
 import time
@@ -28,8 +29,8 @@ from bacpypes3.apdu import (
     GetEnrollmentSummaryACK, GetEventInformationACK, IAmRequest, ReinitializeDeviceRequest, SimpleAckPDU,
     WritePropertyMultipleError,
 )
-from bacpypes3.basetypes import ErrorType, ObjectPropertyReference
-from bacpypes3.constructeddata import Array, List as ListType
+from bacpypes3.basetypes import DeviceObjectPropertyReference, ErrorType, ObjectPropertyReference
+from bacpypes3.constructeddata import Array, List as ListType, ListOf
 from bacpypes3.local.cmd import Commandable
 from bacpypes3.local.oos import OutOfService
 from bacpypes3.app import Application
@@ -57,13 +58,16 @@ from .behaviors import Behavior, ident, make_behavior
 from .config import (
     ACCUMULATOR, ANALOG_TYPES, BINARY_TYPES, CALENDAR, CONTROL_TYPES, INPUT_TYPES, LOOP, MULTISTATE_TYPES,
     EVENT_ENROLLMENT, FILE, LIFE_SAFETY_TYPES, NOTIFICATION_CLASS, PROGRAM, SPECIAL_TYPES, PULSE_CONVERTER, REAL_TYPES,
-    SCHEDULE, TREND_LOG, WEEKDAYS, DeviceConfig, ObjectConfig, RecipientConfig, SimConfig,
+    SCHEDULE, TREND_LOG, WEEKDAYS, DeviceConfig, ObjectConfig, RecipientConfig, SimConfig, parse_calendar_entry,
 )
 from .alarm import Alarm, NCRecipient, NotificationClass, alarm_class, timestamp, transition_index
 from .lifesafety import LS_READONLY, LifeSafety, build_life_safety, link_zones, member_names
 from .eventenroll import EnrollmentAlarm, EventEnrollment, check_target
 from .devmgmt import CreateError, PropertySubscription, cov_class, initial_values, sync_time
-from .schedule import _UNSET as UNSET_VALUE, Calendar, Schedule, build_calendar, build_schedule
+from .schedule import (
+    _UNSET as UNSET_VALUE, Calendar, Schedule, build_calendar, build_schedule, entry_to_cfg, refs_to_targets,
+    resolve_targets, _value_kind,
+)
 from .control import CONTROL_CLASSES, acc_max, build_controls, control_kwargs
 from .fileprog import FILE_READONLY, PROGRAM_READONLY, SimFile, SimProgram, build_file, build_program
 from .props import coerce as coerce_property, list_properties, to_json, writable as property_writable
@@ -122,10 +126,38 @@ def _linux_prefix_len(ip: str) -> Optional[int]:
     return None
 
 
+def _ifconfig_prefix_len(text: str, ip: str) -> Optional[int]:
+    """Prefix length of ``ip`` in BSD / macOS ``ifconfig`` output ("inet 10.0.0.5 netmask 0xffffff00 ...")."""
+    for m in re.finditer(r"\binet (?:addr:)?(\d+\.\d+\.\d+\.\d+)\S*\s+(?:-->\s*\S+\s+)?netmask\s+(\S+)", text):
+        if m.group(1) != ip:
+            continue
+        mask = m.group(2)
+        try:
+            value = int(mask, 16) if mask.lower().startswith("0x") else int.from_bytes(socket.inet_aton(mask), "big")
+        except (ValueError, OSError):
+            return None
+        bits = f"{value:032b}"
+        return bits.count("1") if "01" not in bits else None  # contiguous masks only
+    return None
+
+
+def _bsd_prefix_len(ip: str) -> Optional[int]:
+    """Prefix length of the macOS / BSD interface that owns ``ip`` (parsed from ``ifconfig -a``), or None."""
+    import subprocess
+
+    for exe in ("/sbin/ifconfig", "ifconfig"):
+        try:
+            out = subprocess.run([exe, "-a"], capture_output=True, text=True, timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        return _ifconfig_prefix_len(out, ip)
+    return None
+
+
 def with_prefix(ip: str) -> str:
     """Append the interface's real prefix length to a bare IPv4 address ("/24" when it cannot be found).
 
-    The mask matters on Linux: bacpypes3 binds a second socket to the subnet broadcast address there and
+    The mask matters on Linux and macOS / BSD: bacpypes3 binds a second socket to the subnet broadcast address there and
     waits for it before sending anything, so a wrong mask (e.g. /24 on a Docker /16 bridge) makes the
     broadcast address non-local, the bind retries forever and the BACnet port never sends a packet.
     """
@@ -136,6 +168,11 @@ def with_prefix(ip: str) -> str:
         try:
             prefix = _linux_prefix_len(ip)
         except Exception:  # pragma: no cover - exotic platforms / sandboxes without ioctl
+            prefix = None
+    elif sys.platform == "darwin" or "bsd" in sys.platform:  # same broadcast-socket bind as on Linux
+        try:
+            prefix = _bsd_prefix_len(ip)
+        except Exception:  # pragma: no cover
             prefix = None
     return f"{ip}/{prefix if prefix is not None else 24}"
 
@@ -785,7 +822,8 @@ class Engine:
                 pass
 
     def log_event(self, kind: str, text: str) -> None:
-        ev = {"t": time.time(), "kind": kind, "text": text}
+        self._event_seq = getattr(self, "_event_seq", 0) + 1  # lets /ws skip events already in a snapshot
+        ev = {"t": time.time(), "kind": kind, "text": text, "seq": self._event_seq}
         self.events.append(ev)
         log.info("%s: %s", kind, text)
         self.publish({"type": "log", "event": ev})
@@ -1311,6 +1349,13 @@ class Engine:
         """Reject WriteProperty to Acked_Transitions (R) and to an unknown Notification_Class."""
         pid = str(PropertyIdentifier(prop))
         otype = str(ObjectType(oid[0]))
+        if otype == SCHEDULE and pid == "list-of-object-property-references":
+            try:
+                refs = value.cast_out(ListOf(DeviceObjectPropertyReference)) if hasattr(value, "cast_out") else value
+            except Exception:
+                return  # wrong datatype: rejected by the write itself
+            self.check_schedule_refs(device_id, oid, refs)
+            return
         if (otype == FILE and pid in FILE_READONLY) or (otype == PROGRAM and pid in PROGRAM_READONLY) \
                 or (otype in LIFE_SAFETY_TYPES and pid in LS_READONLY):
             raise ExecutionError(errorClass="property", errorCode="writeAccessDenied")
@@ -1350,6 +1395,12 @@ class Engine:
         for n in rt.ncs:  # Recipient_List written by a client: used for sending and kept in the config
             if (NOTIFICATION_CLASS, n.number) in written:
                 self._sync_recipients(rt, n)
+        for c in rt.calendars:  # Date_List written by a client: kept in the config
+            if (CALENDAR, c.cfg.instance) in written:
+                self._sync_calendar(rt, c)
+        for sc in rt.schedules:  # List_Of_Object_Property_References written by a client: new targets + config
+            if (SCHEDULE, sc.cfg.instance) in written:
+                self._sync_schedule_targets(rt, sc)
         for z in rt.lifesafety:  # Zone_Members written by a client: kept in the config (member names)
             if z.zone and (z.cfg.type, z.cfg.instance) in written:
                 names = member_names(z, rt.lifesafety)
@@ -1426,11 +1477,75 @@ class Engine:
         except Exception as e:
             self.log_event("error", f"{rt.cfg.name}/{n.cfg.name}: recipient list not taken over: {e}")
             return
-        n.cfg.recipients = cfgs
-        o = next((o for o in rt.cfg.objects if o.name == n.cfg.name), None)
-        if o is not None and o is not n.cfg:
-            o.recipients = cfgs  # persisted by Save / Export
+        self._persist(rt, n.cfg, recipients=cfgs)
         self.log_event("alarm", f"{rt.cfg.name}/{n.cfg.name}: recipient list updated ({len(cfgs)} recipient(s))")
+
+    @staticmethod
+    def _persist(rt: DeviceRuntime, cfg: ObjectConfig, **fields: Any) -> None:
+        """Keep runtime changes of an object in the device config (persisted by Save / Export)."""
+        for k, v in fields.items():
+            setattr(cfg, k, v)
+        o = next((o for o in rt.cfg.objects if o.name == cfg.name), None)
+        if o is None:  # template object: add an override entry (merged by name, see expand_device)
+            rt.cfg.objects.append(ObjectConfig(type=cfg.type, name=cfg.name, **fields))
+        elif o is not cfg:
+            for k, v in fields.items():
+                setattr(o, k, v)
+
+    def _sync_calendar(self, rt: DeviceRuntime, c: Calendar) -> None:
+        """Calendar Date_List (written / AddListElement / RemoveListElement) -> config ``dates``."""
+        try:
+            dates = [entry_to_cfg(e) for e in c.obj.dateList or []]
+            for i, d in enumerate(dates):
+                parse_calendar_entry(d, f"dates[{i}]")
+        except Exception as e:
+            self.log_event("error", f"{rt.cfg.name}/{c.cfg.name}: date list not kept in the config: {e}")
+            return
+        if dates == list(c.cfg.dates or []):
+            return
+        self._persist(rt, c.cfg, dates=dates)
+        self.log_event("schedule", f"{rt.cfg.name}/{c.cfg.name}: date list updated ({len(dates)} entries)")
+
+    def _schedule_targets(self, rt: DeviceRuntime, sc: Schedule, refs: Any) -> Tuple[List[Any], List[Any],
+                                                                                    List[str], List[str]]:
+        """Client references -> (config targets, points, labels, external); ValueError if not schedulable."""
+        where = f"{rt.cfg.name}/{sc.cfg.name}"
+        try:
+            entries = refs_to_targets(rt.cfg, refs, rt.points, self.devices.values())
+        except ValueError as e:
+            raise ValueError(f"{where}: {e}") from None
+        targets, labels, external, _ = resolve_targets(rt.cfg, entries, rt.points, self.devices.values(), where)
+        kinds = {_value_kind(p.cfg.type) for p in targets}
+        if kinds and kinds != {sc.kind}:
+            raise ValueError(f"{where}: targets must be {sc.kind} objects (the schedule datatype is fixed)")
+        return entries, targets, labels, external
+
+    def check_schedule_refs(self, device_id: int, oid: Any, refs: Any) -> None:
+        """Reject a List_Of_Object_Property_References the schedule cannot write to (value-out-of-range)."""
+        rt = self.devices[device_id]
+        sc = next((x for x in rt.schedules if x.cfg.instance == oid[1]), None)
+        if sc is None:
+            return
+        try:
+            self._schedule_targets(rt, sc, refs)
+        except ValueError as e:
+            self.log_event("error", f"list-of-object-property-references rejected: {e}")
+            raise ExecutionError(errorClass="property", errorCode="valueOutOfRange")
+
+    def _sync_schedule_targets(self, rt: DeviceRuntime, sc: Schedule) -> None:
+        """Schedule List_Of_Object_Property_References -> the points written by the schedule and config ``targets``."""
+        try:
+            entries, targets, labels, external = self._schedule_targets(rt, sc, sc.obj.listOfObjectPropertyReferences)
+        except ValueError as e:  # WritePropertyMultiple skips check_schedule_refs: restore the configured targets
+            sc.obj.listOfObjectPropertyReferences = resolve_targets(rt.cfg, sc.cfg.targets, rt.points,
+                                                                    self.devices.values(), sc.cfg.name)[3]
+            self.log_event("error", f"{e}; targets unchanged")
+            return
+        if [id(p) for p in targets] == [id(p) for p in sc.targets] and external == sc.external:
+            return
+        sc.targets, sc.labels, sc.external = targets, labels, external
+        self._persist(rt, sc.cfg, targets=entries)
+        self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name}: targets = {', '.join(labels) or 'none'}")
 
     # ---- life safety (see sme_bacnet_sim/lifesafety.py)
 
@@ -1593,6 +1708,11 @@ class Engine:
                     raise CreateError("services", "listElementNotFound", i)
             new = [c for c in current if c not in elements]
         if len(new) != len(current):
+            if str(ObjectType(obj.objectIdentifier[0])) == SCHEDULE and prop.attr == "listOfObjectPropertyReferences":
+                try:
+                    self.check_schedule_refs(device_id, obj.objectIdentifier, new)
+                except ExecutionError:
+                    raise CreateError("property", "valueOutOfRange")
             try:
                 await obj.write_property(prop.attr, ptype(new))
             except (ExecutionError, PropertyError) as e:

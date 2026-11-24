@@ -51,13 +51,12 @@ at its next time entry. Targets in other simulated devices are written directly 
 A ReinitializeDevice of a target's device re-commands the scheduled value; COV subscriptions are kept. `weekly-schedule`, `exception-schedule` and
 `schedule-default` are writable over BACnet and take effect on the next tick (values of the wrong type set
 `reliability` to `configuration-error`); exception entries may use dates, date ranges, weekNDay or
-calendar references. Calendar `date-list` is writable, too. A client write to the schedule's own
+calendar references. Calendar `date-list` is writable, too, and writing `list-of-object-property-references` changes the targets (present-value of output / value objects of the schedule's kind on this or another simulated device, or of a device outside the simulator; anything else is `value-out-of-range`); both are kept in the config (Save / Export). A client write to the schedule's own
 `present-value` (with the schedule datatype, otherwise `invalid-data-type`) is forwarded to all targets at
 `priority_for_writing` and holds until the next scheduled time entry; it is accepted whether or not
 `out-of-service` is set.
 
-Not supported: writing to targets on devices outside the simulator (no network WriteProperty), and
-re-reading `list-of-object-property-references` written by a client (targets come from the config).
+Not supported: writing to targets on devices outside the simulator (no network WriteProperty).
 
 The `lighting` template has a schedule switching `Zone1_Cmd` (weekdays 08:00 on, 18:00 off) and the
 `split_ac` template one for `OnOff` (weekdays 09:00–18:00); disable them with the template parameter

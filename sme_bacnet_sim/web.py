@@ -433,11 +433,22 @@ def create_app(engine: Engine) -> FastAPI:
         await sock.accept()
         q = engine.subscribe()
         try:
-            await sock.send_json({"type": "snapshot", "data": engine.snapshot()})
+            def snap() -> Dict[str, Any]:
+                nonlocal seen
+                data = engine.snapshot()
+                seen = max((e.get("seq", 0) for e in data.get("events", [])), default=seen)
+                return {"type": "snapshot", "data": data}
+
+            seen = 0
+            await sock.send_json(snap())
             while True:
                 msg = await q.get()
                 if msg["type"] == "reload":
-                    msg = {"type": "snapshot", "data": engine.snapshot()}
+                    msg = snap()
+                elif msg["type"] == "log" and msg["event"].get("seq", 0) <= seen:
+                    # already in a snapshot sent after it was logged (e.g. "pasted ..." logged right after the
+                    # reload of a paste / duplicate / import): the UI would list it twice
+                    continue
                 await sock.send_json(msg)
         except (WebSocketDisconnect, asyncio.CancelledError, RuntimeError):
             pass

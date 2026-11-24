@@ -27,8 +27,7 @@ Not supported：過渡状態 `loading`・`waiting`・`unloading`、現在の状�
 
 ## [Schedule と Calendar](schedules-calendars.md)
 
-サポートしていません: シミュレータ外のデバイス上の対象への書き込み（ネットワーク WriteProperty なし）、および
-クライアントが書き込んだ `list-of-object-property-references` の再読み取り（対象は設定ファイルから取得されます）。
+サポートしていません: シミュレータ外のデバイス上の対象への書き込み（ネットワーク WriteProperty なし）。
 
 ## [アラーム（intrinsic reporting）](alarms.md)
 

@@ -20,8 +20,9 @@
   `property-is-not-a-list` (property is not a list), `property` / `property-is-not-an-array` (array index
   given), `write-access-denied`, `invalid-data-type`, and `services` / `list-element-not-found` with the
   (1-based) number of the first element that is not in the list on remove. Written back to the config:
-  zone-members and recipient-list (also used for sending notifications at once); date-list and
-  list-of-object-property-references change the running object only, as with WriteProperty.
+  zone-members, recipient-list (also used for sending notifications at once), date-list and
+  list-of-object-property-references (the schedule writes to the new targets), as with WriteProperty; objects that
+  come from a template are kept as an override entry.
 
 ```yaml
   - device_id: 1006

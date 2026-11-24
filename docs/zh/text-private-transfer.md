@@ -14,9 +14,8 @@
   bacpypes3 属性类型解码，新列表与整表 WriteProperty 完全相同地写入（相同检查与后续处理）。添加时已存在的元素被
   忽略。错误（Add/RemoveListElement-Error）：未知对象 / 属性、`services` / `property-is-not-a-list`（不是列表）、
   `property` / `property-is-not-an-array`（指定了数组下标）、`write-access-denied`、`invalid-data-type`，删除时不在
-  列表中的元素返回 `services` / `list-element-not-found`（带第一个此类元素的从 1 开始的序号）。写回配置：zone-members
-  与 recipient-list（同时立即用于发送通知）；date-list 与 list-of-object-property-references 与 WriteProperty 一样只改变
-  运行中的对象。
+  列表中的元素返回 `services` / `list-element-not-found`（带第一个此类元素的从 1 开始的序号）。写回配置（与 WriteProperty 相同，来自模板的对象以覆盖条目保存）：zone-members、
+  recipient-list（同时立即用于发送通知）、date-list 与 list-of-object-property-references（Schedule 改为写入新目标）。
 
 ```yaml
   - device_id: 1006
