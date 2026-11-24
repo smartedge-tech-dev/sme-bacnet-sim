@@ -16,9 +16,10 @@ FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PYTHONPATH=/app
 
-# libyaml for the PyYAML C extension when it was compiled in the builder stage
+# libyaml for the PyYAML C extension when it was compiled in the builder stage;
+# tzdata so `-e TZ=Asia/Tokyo` sets the clock that schedules and the UI use (default: UTC)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libyaml-0-2 \
+    && apt-get install -y --no-install-recommends libyaml-0-2 tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /install /usr/local

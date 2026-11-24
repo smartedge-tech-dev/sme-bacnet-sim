@@ -5,7 +5,7 @@ network:
   port: 47808
   network_number: 1     # IP-side network number (must differ from virtual_network)
   virtual_network: 100
-  mode: normal          # "bbmd" lets clients on other subnets register as foreign devices
+  mode: normal          # "bbmd" lets clients on other subnets, or on a UDP port other than 47808, register as foreign devices
   router:
     device_id: 4194000
     name: SME-BACnetSim-Router

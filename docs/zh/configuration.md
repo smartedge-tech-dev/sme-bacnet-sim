@@ -23,3 +23,5 @@ devices:
     objects:                       # add objects, or override template objects by name
       - {name: SetPoint, type: av, value: 24.0, commandable: true}
 ```
+
+`network` 部分也可以在 Web 界面（*编辑 → BACnet 网络…*）中修改，见快速开始。

@@ -23,3 +23,5 @@ devices:
     objects:                       # add objects, or override template objects by name
       - {name: SetPoint, type: av, value: 24.0, commandable: true}
 ```
+
+`network` セクションは Web UI（*編集 → BACnet ネットワーク…*）でも変更できます。クイックスタートを参照してください。

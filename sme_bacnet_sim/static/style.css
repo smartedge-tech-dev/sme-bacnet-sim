@@ -10,7 +10,15 @@
 .st-run.paused { color: var(--warn); }
 .st-run.paused::before { width: 7px; height: 7px; background: none; border-left: 2px solid currentColor; border-right: 2px solid currentColor; }
 .st-run:hover { border-color: currentColor; }
-.st-net { font-family: var(--mono); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
+.st-net { font-family: var(--mono); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px;
+  background: none; border: 1px solid transparent; color: inherit; padding: 1px 4px; cursor: pointer; }
+.st-net:hover { border-color: currentColor; }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.row2even { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2r { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+.row2r[hidden] { display: none; }
+.netdlg { width: min(560px, 94vw); }
+.dlgform .hint { margin: 0; color: var(--muted); font-size: 12px; }
 .conn { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--ok); }
 .conn.off { background: var(--bad); }
 
@@ -64,6 +72,10 @@ table.points { width: 100%; border-collapse: collapse; }
 .points .val.flash { background: var(--flash); transition: none; }
 .points .obj, .points .beh { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 .points .nm small { display: block; color: var(--muted); font-size: 11px; }
+/* Descriptions wrap so the Command column stays in view on ~1024px windows (#7) */
+.points td.nm { white-space: normal; min-width: 140px; }
+.points td.cmd { white-space: normal; flex-wrap: wrap; }
+.points td.val, .points td.beh, .points td.un { white-space: normal; }
 .points .errmark { color: var(--bad); cursor: help; }
 .pill { padding: 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .04em; background: var(--surface); border: 1px solid var(--line); }
 .pill.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

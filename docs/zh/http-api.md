@@ -10,6 +10,7 @@
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（或 `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（均可选；不带时区的时间 = 本地时间） |
 | GET/PUT | `/api/config` | 整个配置（PUT 接受 YAML 或 JSON 文本） |
+| GET/PUT | `/api/network` | 网络设置与本机 IPv4 网卡（`{network, bind, config_path, interfaces}`）；PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` 校验、重新绑定并写回 `network:` 部分 → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart 上传：一个 YAML / JSON / Excel（`.xlsx`）文件，或 EDE CSV 文件 / zip（字段 `file`，可重复） |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip，`xlsx` = Excel 点表） |
 | GET | `/api/config/xlsx-template` | 空白 Excel 点表模板 |

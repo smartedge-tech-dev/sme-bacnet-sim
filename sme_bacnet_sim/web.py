@@ -19,6 +19,7 @@ from .clipboard import duplicate_device, paste_objects
 from .config import DeviceConfig, SimConfig, dump_yaml, parse_text
 from .ede import export_ede_zip, import_ede_files
 from .engine import Engine
+from .netsettings import apply_network, list_interfaces, network_view
 from .templates import expand_device, template_catalog
 from .xlsx import EXPORT_FILE, TEMPLATE_FILE, blank_template, export_xlsx, import_xlsx
 
@@ -77,7 +78,11 @@ XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 def _bad(e: Exception) -> HTTPException:
     if isinstance(e, ValidationError):
-        msg = "; ".join(f"{'.'.join(str(x) for x in err['loc'])}: {err['msg']}" for err in e.errors())
+        parts = []
+        for err in e.errors():
+            loc, text = ".".join(str(x) for x in err["loc"]), str(err["msg"]).removeprefix("Value error, ")
+            parts.append(f"{loc}: {text}" if loc else text)
+        msg = "; ".join(parts)
     else:
         msg = str(e)
     return HTTPException(status_code=400, detail=msg)
@@ -324,6 +329,17 @@ def create_app(engine: Engine) -> FastAPI:
             msg += f", {len(warnings)} warnings: " + "; ".join(warnings[:5]) + (" ..." if len(warnings) > 5 else "")
         engine.log_event("config", msg)
         return {**res, "warnings": warnings}
+
+    @app.get("/api/network")
+    async def get_network():
+        return {**network_view(engine), "interfaces": await asyncio.to_thread(list_interfaces)}
+
+    @app.put("/api/network")
+    async def put_network(data: Dict[str, Any] = Body(...)):
+        try:
+            return await apply_network(engine, data)
+        except (ValueError, ValidationError) as e:
+            raise _bad(e)
 
     @app.post("/api/config/save")
     async def save_config():

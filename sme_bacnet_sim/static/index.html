@@ -80,7 +80,33 @@
   </form>
 </dialog>
 
-<dialog id="dlgProps" class="dialog sh-dialog propsdlg">
+<dialog id="dlgNet" class="dialog sh-dialog netdlg">
+  <form method="dialog" class="dlgform">
+    <h3 data-i18n="netdlg.title">BACnet network</h3>
+    <label><span data-i18n="netdlg.adapter">Network adapter</span> <select id="netIp"></select></label>
+    <div class="row3">
+      <label><span data-i18n="netdlg.port">UDP port</span> <input id="netPort" type="number" min="1" max="65535" required></label>
+      <label><span data-i18n="netdlg.netnum">IP network number</span> <input id="netNum" type="number" min="1" max="65534" required></label>
+      <label><span data-i18n="netdlg.vnet">Virtual network number</span> <input id="netVnet" type="number" min="1" max="65534" required></label>
+    </div>
+    <div class="row2even">
+      <label><span data-i18n="netdlg.router">Router device ID</span> <input id="netRouter" type="number" min="0" max="4194302" required></label>
+      <label><span data-i18n="netdlg.mode">Mode</span> <select id="netMode"></select></label>
+    </div>
+    <div class="row2r" id="netFdRow">
+      <label><span data-i18n="netdlg.fd.bbmd">BBMD address</span> <input id="netFdBbmd" placeholder="192.168.2.1:47808"></label>
+      <label><span data-i18n="netdlg.fd.ttl">TTL (s)</span> <input id="netFdTtl" type="number" min="1" max="65535"></label>
+    </div>
+    <p class="hint" id="netHint"></p>
+    <div class="err" id="netErr"></div>
+    <div class="dlgbtns">
+      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
+      <button class="btn primary" id="netApply" value="default" data-i18n="dlg.apply">Apply</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgProps"class="dialog sh-dialog propsdlg">
   <form method="dialog" class="dlgform">
     <h3 id="propsTitle"></h3>
     <div class="propswrap"><table class="props">

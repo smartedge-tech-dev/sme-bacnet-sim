@@ -530,7 +530,7 @@ class DeviceConfig(_Model):
 
 
 class RouterConfig(_Model):
-    device_id: int = 4194000
+    device_id: int = Field(default=4194000, ge=0, le=4194302)
     name: str = "SME-BACnetSim-Router"
 
 
@@ -561,7 +561,7 @@ def parse_host_port(v: str, default_port: int = 47808) -> str:
 
 class NetworkConfig(_Model):
     ip: str = "auto"  # "auto" or "192.168.1.10/24"
-    port: int = 47808
+    port: int = Field(default=47808, ge=1, le=65535)
     network_number: int = Field(default=1, ge=1, le=65534)  # network number of the IP side (routing needs one)
     virtual_network: int = Field(default=100, ge=1, le=65534)
     mode: Literal["normal", "bbmd"] = "normal"

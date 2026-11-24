@@ -213,6 +213,28 @@ Shell.addStrings("en", {
   "add.name": "Name",
   "add.params": "Parameters (YAML)",
   "add.submit": "Add",
+  "menu.edit.network": "BACnet network…",
+  "netdlg.title": "BACnet network",
+  "netdlg.open": "Click to change the BACnet network settings",
+  "netdlg.adapter": "Network adapter",
+  "netdlg.auto": "Auto-detect",
+  "netdlg.configured": "Configured: {ip} (not found on this computer)",
+  "netdlg.port": "UDP port",
+  "netdlg.netnum": "IP network number",
+  "netdlg.vnet": "Virtual network number",
+  "netdlg.router": "Router device ID",
+  "netdlg.mode": "Mode",
+  "netdlg.mode.normal": "Normal",
+  "netdlg.mode.bbmd": "BBMD (accept foreign devices)",
+  "netdlg.mode.foreign": "Foreign device (register with a BBMD)",
+  "netdlg.fd.bbmd": "BBMD address",
+  "netdlg.fd.ttl": "TTL (s)",
+  "netdlg.hint": "Apply rebinds BACnet/IP without restarting; clients have to discover the devices again.",
+  "netdlg.save": "Saved to {path} (network section only).",
+  "netdlg.nosave": "Started without a config file: the settings are not saved.",
+  "netdlg.saved": "Network settings applied and saved to {path}",
+  "netdlg.applied": "Network settings applied",
+  "netdlg.saveFailed": "Network settings applied, but saving failed: {err}",
   "import.ok": "Configuration imported",
   "import.warn": "Imported with {n} warnings (see event log)",
   "import.fail": "Import failed: {msg}",
@@ -290,7 +312,7 @@ function fmtValue(o) {
 }
 const fmtUnits = (u) => (u || "").replace("degrees-celsius", "°C").replace("percent-relative-humidity", "%RH")
   .replace(/^percent$/, "%").replace("parts-per-million", "ppm").replace("kilowatt-hours", "kWh")
-  .replace("kilowatts", "kW").replace(/^watts$/, "W").replace("luxes", "lx").replace("pascals", "Pa")
+  .replace("cubic-meters-per-hour", "m³/h").replace("kilowatts", "kW").replace(/^watts$/, "W").replace("luxes", "lx").replace("pascals", "Pa")
   .replace("amperes", "A").replace("volts", "V").replace("hertz", "Hz").replace("no-units", "");
 const hhmm = (h) => `${String(Math.floor(h)).padStart(2, "0")}:${String(Math.floor((h % 1) * 60)).padStart(2, "0")}`;
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -469,7 +491,7 @@ function renderTrendLogRow(d, o) {
     <td class="nm">${esc(o.name)}<small>${esc(o.description || t("tl.target", { target: o.target, interval: o.log_interval }))}</small></td>
     <td class="obj">${SHORT[o.type]}:${o.instance}</td>
     <td class="val"></td>
-    <td>${esc(fmtUnits(o.units))}</td>
+    <td class="un">${esc(fmtUnits(o.units))}</td>
     <td class="pri"></td>
     <td></td>
     <td class="beh">${esc(o.target)}</td>
@@ -582,7 +604,7 @@ function renderEERow(d, o) {
     <td class="nm">${esc(o.name)}<span class="abox"></span><small>${esc(sub)}</small></td>
     <td class="obj">${SHORT[o.type]}:${o.instance}</td>
     <td class="val"></td>
-    <td>${esc(fmtUnits(o.units))}</td>
+    <td class="un">${esc(fmtUnits(o.units))}</td>
     <td></td>
     <td></td>
     <td class="beh">${esc(o.event_type)}</td>
@@ -741,7 +763,7 @@ function renderRowInner(d, o) {
     <td class="nm">${esc(o.name)}${o.alarm ? '<span class="abox"></span>' : ""}${o.description ? `<small>${esc(o.description)}</small>` : ""}</td>
     <td class="obj">${SHORT[o.type]}:${o.instance}</td>
     <td class="val"></td>
-    <td>${esc(fmtUnits(o.units))}</td>
+    <td class="un">${esc(fmtUnits(o.units))}</td>
     <td class="pri"></td>
     <td><input type="checkbox" class="oos" title="${esc(t("row.oos.title"))}"></td>
     <td class="beh">${beh} <span class="errmark"></span></td>
@@ -1018,6 +1040,51 @@ async function openAdd() {
   $("dlgAdd").showModal();
 }
 
+// BACnet network settings (#6): applied live (the BACnet stack rebinds) and written to the config file.
+async function openNetwork() {
+  let info;
+  try { info = await api("GET", "/api/network"); } catch (e) { toast(e.message); return; }
+  const n = info.network, host = (a) => String(a).split("/")[0];
+  const sel = $("netIp");
+  sel.innerHTML = "";
+  sel.add(new Option(t("netdlg.auto"), "auto"));
+  for (const it of info.interfaces) sel.add(new Option(`${it.name} — ${it.address}`, it.address));
+  const match = info.interfaces.find((it) => n.ip !== "auto" && it.ip === host(n.ip));
+  if (n.ip !== "auto" && !match) sel.add(new Option(t("netdlg.configured", { ip: n.ip }), n.ip));
+  sel.value = n.ip === "auto" ? "auto" : match ? match.address : n.ip;
+  const mode = $("netMode");
+  mode.innerHTML = "";
+  for (const m of ["normal", "bbmd", "foreign"]) mode.add(new Option(t(`netdlg.mode.${m}`), m));
+  mode.value = n.mode === "bbmd" ? "bbmd" : n.foreign_device ? "foreign" : "normal";
+  const showFd = () => { $("netFdRow").hidden = mode.value !== "foreign"; };
+  mode.onchange = showFd; showFd();
+  $("netPort").value = n.port; $("netNum").value = n.network_number; $("netVnet").value = n.virtual_network;
+  $("netRouter").value = n.router.device_id;
+  $("netFdBbmd").value = n.foreign_device?.bbmd || ""; $("netFdTtl").value = n.foreign_device?.ttl || 300;
+  $("netHint").textContent = t("netdlg.hint") + " "
+    + (info.config_path ? t("netdlg.save", { path: info.config_path }) : t("netdlg.nosave"));
+  $("netErr").textContent = "";
+  $("netApply").onclick = async (ev) => {
+    ev.preventDefault();
+    const num = (id) => Number($(id).value);
+    const body = {
+      ip: sel.value, port: num("netPort"), network_number: num("netNum"), virtual_network: num("netVnet"),
+      mode: mode.value === "bbmd" ? "bbmd" : "normal", router: { ...n.router, device_id: num("netRouter") },
+      foreign_device: mode.value === "foreign" ? { bbmd: $("netFdBbmd").value.trim(), ttl: num("netFdTtl") } : null,
+    };
+    const btn = $("netApply");
+    btn.disabled = true;
+    try {
+      const r = await api("PUT", "/api/network", body);
+      $("dlgNet").close();
+      if (r.save_error) toast(t("netdlg.saveFailed", { err: r.save_error }));
+      else toast(r.saved ? t("netdlg.saved", { path: r.saved }) : t("netdlg.applied"), "ok");
+    } catch (e) { $("netErr").textContent = e.message; }
+    finally { btn.disabled = false; }
+  };
+  $("dlgNet").showModal();
+}
+
 // ------------------------------------------------------------------ clipboard (page memory)
 
 function selectDevice(id) {
@@ -1192,6 +1259,8 @@ Shell.init({
       { id: "edit.paste", label: "menu.edit.paste", title: t("menu.edit.paste.title"), onClick: pasteClip },
       { id: "edit.config", label: "menu.edit.config", onClick: editConfig },
       { id: "edit.add", label: "menu.edit.add", onClick: openAdd },
+      { separator: true },
+      { id: "edit.network", label: "menu.edit.network", onClick: openNetwork },
     ] },
     { id: "sim", label: "menu.sim", items: [
       { id: "sim.run", label: "menu.sim.pause", onClick: toggleRun },
@@ -1215,7 +1284,7 @@ Shell.setStatus(`
   <button type="button" class="st-alarm" id="alarmInd" hidden><span aria-hidden="true">⚠</span><span class="st-alarm-n">0</span></button>
   <span class="st-clock" id="clock" title="${esc(t("status.clock"))}">--:--</span>
   <button type="button" class="st-run" id="runInd"><span class="st-run-lbl"></span></button>
-  <span class="st-net" id="netinfo">${esc(t("status.connecting"))}</span>
+  <button type="button" class="st-net" id="netinfo">${esc(t("status.connecting"))}</button>
   <span class="conn off" id="conn" role="img" title="${esc(t("status.ws.off"))}" aria-label="${esc(t("status.ws.off"))}"></span>`);
 renderSim({ running: true, time_scale: null });
 
@@ -1228,7 +1297,7 @@ function renderNet(n) {
   const net = t("net.info", { bind: n.bind, router: n.router_device_id, vnet: n.virtual_network }) + (n.mode === "bbmd" ? t("net.bbmd") : "")
     + (n.foreign_device ? t("net.fd", { bbmd: n.foreign_device.bbmd, status: t(`net.fd.${n.foreign_device.status}`) }) : "");
   $("netinfo").textContent = net;
-  $("netinfo").title = net;
+  $("netinfo").title = `${net}\n${t("netdlg.open")}`;
 }
 
 function connect() {
@@ -1251,6 +1320,7 @@ function connect() {
 
 $("runInd").onclick = toggleRun;
 $("alarmInd").onclick = openAlarms;
+$("netinfo").onclick = openNetwork;
 $("fileImport").onchange = importFiles;
 $("btnAdd").onclick = openAdd;
 $("search").oninput = (e) => { S.filter = e.target.value; renderDevices(); renderDevice(); };

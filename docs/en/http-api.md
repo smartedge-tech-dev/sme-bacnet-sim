@@ -10,6 +10,7 @@
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}` (or `disable` / `disable-initiation`) |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}` (all optional; naive time = local) |
 | GET/PUT | `/api/config` | whole config (PUT accepts YAML or JSON text) |
+| GET/PUT | `/api/network` | network settings + local IPv4 interfaces (`{network, bind, config_path, interfaces}`); PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` validates, rebinds and writes the `network:` section back → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart upload: one YAML / JSON / Excel (`.xlsx`) file, or EDE CSV files / zip (field `file`, repeatable) |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | download (`ede` = zip of main + state-text CSV, `xlsx` = Excel point list) |
 | GET | `/api/config/xlsx-template` | blank Excel point-list template |

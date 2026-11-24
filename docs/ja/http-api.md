@@ -10,6 +10,7 @@
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（または `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（すべて任意。タイムゾーンなしの時刻 = ローカル） |
 | GET/PUT | `/api/config` | 設定全体（PUT は YAML または JSON テキストを受け付けます） |
+| GET/PUT | `/api/network` | ネットワーク設定とローカルの IPv4 インターフェース（`{network, bind, config_path, interfaces}`）。PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` で検証・再バインドし、`network:` セクションを書き戻します → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart アップロード: YAML / JSON / Excel（`.xlsx`）ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip、`xlsx` = Excel ポイントリスト） |
 | GET | `/api/config/xlsx-template` | 空の Excel ポイントリストテンプレート |

@@ -40,6 +40,28 @@ python -m venv .venv
 
 > **同一台 PC 的注意事项：** 在 Windows 上，同一台机器上的客户端可能收不到广播回复（Who-Is/I-Am），单播则正常。请把客户端运行在另一台机器上，或让模拟器与客户端绑定不同的网卡，或设置 `network.mode: bbmd` 并将客户端注册为 foreign device。
 
+> **客户端使用其他 UDP 端口：** Who-Is / I-Am 广播发往模拟器的端口（默认 47808）。绑定在其他端口（如 47809）的客户端
+> 收不到 I-Am 广播，因此发现不了设备。请让两边使用同一端口，或设置 `network.mode: bbmd` 并把客户端作为 foreign device
+> 注册到模拟器（`<模拟器 IP>:47808`），I-Am 应答会转发给客户端。
+
+### 在 Web 界面设置网络
+
+*编辑 → BACnet 网络…*（或点击状态栏的 BACnet/IP 地址）可以修改网卡（按名称和地址/前缀列出，或选*自动检测*）、UDP 端口、
+IP 侧与虚拟网络号、路由器设备 ID 和运行模式（普通 / BBMD / foreign device：BBMD 地址与 TTL）。*应用* 时先校验设置
+（是否为本机地址、UDP 端口是否空闲、网络号是否不同、设备 ID 是否唯一），然后无需重启即重新绑定 BACnet/IP，
+并把 `network:` 部分写回配置文件（其他部分和未保存的修改保持不变；`network:` 内的注释会丢失）。
+`--ip` / `--bacnet-port` 等命令行选项在下次启动时仍然优先。修改后客户端需要重新发现设备。
+Not supported：关闭 Read-Property-Multiple 或分段（segmentation）支持（始终开启）。
+
+### Docker
+
+```bash
+docker run --rm --network host -e TZ=Asia/Tokyo ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+```
+
+Who-Is / I-Am 广播需要 `--network host`（Linux）。不指定 `TZ` 时容器时钟为 UTC，排程和界面时钟也按 UTC 计算
+（镜像已包含 tzdata）。
+
 ### Foreign device 注册（跨子网）
 
 需要让其他子网的客户端访问时，可把路由器端口作为 foreign device 注册到已有的 BBMD：
@@ -540,6 +562,7 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（或 `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（均可选；不带时区的时间 = 本地时间） |
 | GET/PUT | `/api/config` | 整个配置（PUT 接受 YAML 或 JSON 文本） |
+| GET/PUT | `/api/network` | 网络设置与本机 IPv4 网卡（`{network, bind, config_path, interfaces}`）；PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` 校验、重新绑定并写回 `network:` 部分 → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart 上传：一个 YAML / JSON / Excel（`.xlsx`）文件，或 EDE CSV 文件 / zip（字段 `file`，可重复） |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip，`xlsx` = Excel 点表） |
 | GET | `/api/config/xlsx-template` | 空白 Excel 点表模板 |

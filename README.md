@@ -53,6 +53,31 @@ then *Who-Is*.
 > (Who-Is/I-Am) — unicast works. Run the client on another machine, bind the simulator to a different NIC
 > than the client, or set `network.mode: bbmd` and register the client as a foreign device.
 
+> **Client on another UDP port:** Who-Is / I-Am broadcasts go to the simulator's port (47808 by default). A client
+> bound to another port (e.g. 47809) does not receive the I-Am broadcasts and finds no devices. Either use the same
+> port on both sides, or set `network.mode: bbmd` and register the client as a foreign device with the simulator
+> (`<simulator ip>:47808`); the I-Am replies are then forwarded to the client.
+
+### Network settings in the web UI
+
+*Edit → BACnet network…* (or a click on the BACnet/IP address in the status bar) changes the network adapter
+(listed by name and address/prefix, or *Auto-detect*), the UDP port, the IP-side and virtual network numbers, the
+router device ID and the mode (normal / BBMD / foreign device with BBMD address and TTL). *Apply* checks the settings
+(an address of this computer, a free UDP port, different network numbers, unique device IDs), rebinds BACnet/IP
+without restarting and writes the `network:` section back to the config file (other sections and unsaved edits are
+left as they are; comments inside `network:` are lost). Command-line options such as `--ip` / `--bacnet-port` still
+win at the next start. Clients have to discover the devices again after a change.
+Not supported: switching off Read-Property-Multiple or segmentation support (always on).
+
+### Docker
+
+```bash
+docker run --rm --network host -e TZ=Asia/Tokyo ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+```
+
+`--network host` (Linux) is needed for Who-Is / I-Am broadcasts. Without `TZ` the container clock is UTC, and
+schedules and the clock in the UI follow it (the image includes tzdata).
+
 ### Foreign device registration (cross-subnet)
 
 To reach clients on another subnet, the router port can register as a foreign device with an existing BBMD:
@@ -733,6 +758,7 @@ offline. Full reference: `docs/en/cloning.md`.
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}` (or `disable` / `disable-initiation`) |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}` (all optional; naive time = local) |
 | GET/PUT | `/api/config` | whole config (PUT accepts YAML or JSON text) |
+| GET/PUT | `/api/network` | network settings + local IPv4 interfaces (`{network, bind, config_path, interfaces}`); PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` validates, rebinds and writes the `network:` section back → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart upload: one YAML / JSON / Excel (`.xlsx`) file, or EDE CSV files / zip (field `file`, repeatable) |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | download (`ede` = zip of main + state-text CSV, `xlsx` = Excel point list) |
 | GET | `/api/config/xlsx-template` | blank Excel point-list template |

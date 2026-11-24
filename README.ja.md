@@ -52,6 +52,30 @@ http://127.0.0.1:8080/ を開きます。オプション:
 > （Who-Is/I-Am）を受信できないことがあります（ユニキャストは動作します）。クライアントを別のマシンで実行するか、シミュレータをクライアントとは別の NIC
 > にバインドするか、`network.mode: bbmd` を設定してクライアントを Foreign Device として登録してください。
 
+> **別の UDP ポートのクライアント:** Who-Is / I-Am のブロードキャストはシミュレータのポート（既定 47808）宛てです。
+> 別のポート（例: 47809）にバインドしたクライアントは I-Am を受信できず、デバイスが見つかりません。両者を同じポートにするか、
+> `network.mode: bbmd` にしてクライアントをシミュレータ（`<シミュレータの IP>:47808`）に Foreign Device として登録してください。
+> I-Am の応答がクライアントに転送されます。
+
+### Web UI でのネットワーク設定
+
+*編集 → BACnet ネットワーク…*（またはステータスバーの BACnet/IP アドレスをクリック）で、ネットワークアダプター
+（名前とアドレス/プレフィックスの一覧、または*自動検出*）、UDP ポート、IP 側・仮想ネットワーク番号、ルーターのデバイス ID、
+動作モード（通常 / BBMD / Foreign Device：BBMD アドレスと TTL）を変更できます。*適用* で設定を検証し（このコンピューターの
+アドレスか、UDP ポートが空いているか、ネットワーク番号が異なるか、デバイス ID が一意か）、再起動せずに BACnet/IP を再バインドして、
+設定ファイルの `network:` セクションに書き戻します（他のセクションと未保存の変更はそのまま。`network:` 内のコメントは消えます）。
+`--ip` / `--bacnet-port` などのコマンドラインオプションは次回起動時も優先されます。変更後はクライアント側でデバイスを再検出してください。
+Not supported：Read-Property-Multiple やセグメンテーション対応のオフ（常にオン）。
+
+### Docker
+
+```bash
+docker run --rm --network host -e TZ=Asia/Tokyo ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+```
+
+Who-Is / I-Am のブロードキャストには `--network host`（Linux）が必要です。`TZ` を指定しないとコンテナの時計は UTC になり、
+スケジュールと UI の時計もそれに従います（イメージには tzdata が入っています）。
+
 ### Foreign Device 登録（サブネット越え）
 
 別サブネットのクライアントから使う場合、ルーターのポートを既存の BBMD に Foreign Device として登録できます：
@@ -717,6 +741,7 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（または `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（すべて任意。タイムゾーンなしの時刻 = ローカル） |
 | GET/PUT | `/api/config` | 設定全体（PUT は YAML または JSON テキストを受け付けます） |
+| GET/PUT | `/api/network` | ネットワーク設定とローカルの IPv4 インターフェース（`{network, bind, config_path, interfaces}`）。PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` で検証・再バインドし、`network:` セクションを書き戻します → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart アップロード: YAML / JSON / Excel（`.xlsx`）ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
 | GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip、`xlsx` = Excel ポイントリスト） |
 | GET | `/api/config/xlsx-template` | 空の Excel ポイントリストテンプレート |

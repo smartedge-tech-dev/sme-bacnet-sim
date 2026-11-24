@@ -982,10 +982,16 @@ class Engine:
                 for ext in sc.external:
                     self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name}: target {ext} is not part of this "
                                                f"simulator; not written")
+        if net.mode == "bbmd":
+            mode = ", BBMD"
+        elif net.foreign_device is not None:
+            mode = f", foreign device of BBMD {net.foreign_device.bbmd} (TTL {net.foreign_device.ttl} s)"
+        else:
+            mode = ""
         self.log_event(
             "start",
-            f"BACnet/IP {self.bind_address} (router device {net.router.device_id}), "
-            f"{len(runtimes)} device(s) on virtual network {net.virtual_network}",
+            f"BACnet/IP {self.bind_address} (router device {net.router.device_id}, network {net.network_number}"
+            f"{mode}), {len(runtimes)} device(s) on virtual network {net.virtual_network}",
         )
 
     # ---- foreign device registration (bacpypes3 BIPForeign)
@@ -2140,6 +2146,7 @@ class Engine:
         return {
             "version": __version__,
             "network": {"bind": self.bind_address, "virtual_network": net.virtual_network,
+                        "network_number": net.network_number,
                         "router_device_id": net.router.device_id, "mode": net.mode,
                         "foreign_device": dict(self.foreign) if self.foreign else None},
             "simulation": self.config.simulation.model_dump(),

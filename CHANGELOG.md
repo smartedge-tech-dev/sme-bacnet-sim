@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- BACnet network settings in the web UI (#6): *Edit → BACnet network…* (or a click on the status-bar address)
+  picks the network adapter from the local IPv4 interfaces (or auto-detect) and sets the UDP port, IP-side / virtual
+  network numbers, router device ID and normal / BBMD / foreign-device mode. Settings are validated (local address,
+  free UDP port, network numbers, device IDs), applied without a restart (the BACnet stack rebinds) and the
+  `network:` section is written back to the config file. API: `GET/PUT /api/network`.
+
+### Changed
+- The `start:` log line names the IP-side network number and the mode (`BBMD` / foreign device of a BBMD) (#7).
+- Point table: names, values, units and command buttons wrap so the Command column (e.g. *Relinquish*) stays in
+  view on ~1024 px windows in English (#7); `cubic-meters-per-hour` is shown as `m³/h`.
+- Docker image installs `tzdata`; set `-e TZ=Asia/Tokyo` etc. for schedules and the UI clock (default UTC) (#7).
+- `network.port` (1–65535) and `network.router.device_id` (0–4194302) are range-checked.
+
+### Documentation
+- Clients bound to a UDP port other than 47808 do not receive I-Am broadcasts: use the same port or
+  `mode: bbmd` + foreign-device registration (#7). Docker `TZ` usage (#7).
+
 ## [0.3.0] - 2026-11-24
 
 ### Added
