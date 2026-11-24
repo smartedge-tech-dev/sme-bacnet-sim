@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Excel point-list import / export (#2): File → Import accepts `.xlsx`, File → Export → Excel point list and
+  File → Download blank Excel template (`Devices` / `Points` / `StateTexts` / `Network` sheets). Import errors name
+  the sheet, row and column; warnings go to the event log. New dependency: `openpyxl`. See `docs/en/excel.md`.
 - `sme-bacnet-sim clone`: read-only clone of real BACnet devices into a simulator config (Who-Is / ReadProperty /
   ReadPropertyMultiple only), for offline tests (#1). See `docs/en/cloning.md`.
 - `clone --foreign-bbmd HOST[:PORT]` / `--foreign-ttl`: register as a foreign device with a BBMD to clone devices on

@@ -10,8 +10,9 @@
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（または `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（すべて任意。タイムゾーンなしの時刻 = ローカル） |
 | GET/PUT | `/api/config` | 設定全体（PUT は YAML または JSON テキストを受け付けます） |
-| POST | `/api/config/import` | multipart アップロード: YAML / JSON ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
-| GET | `/api/config/export?format=yaml\|json\|ede` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip） |
+| POST | `/api/config/import` | multipart アップロード: YAML / JSON / Excel（`.xlsx`）ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
+| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip、`xlsx` = Excel ポイントリスト） |
+| GET | `/api/config/xlsx-template` | 空の Excel ポイントリストテンプレート |
 | POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | デバイスの追加 / 編集 / 削除 |
 | POST | `/api/devices/{id}/duplicate` | デバイスの複製（次の空き ID、`Name (copy)`）。`{"device_id", "name"}` を返す |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | コピー用のオブジェクト設定（テンプレートのオブジェクトも展開） |

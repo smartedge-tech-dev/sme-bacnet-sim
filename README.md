@@ -613,6 +613,20 @@ most BACnet tools and integrators exchange.
   created. Notification classes are imported with default priorities and no recipients (EDE has no columns for
   them). Other alarm settings (deadband, time delay, binary / multi-state alarm values) are not carried by EDE.
 
+### Excel point list
+
+File → **Download blank Excel template** (`GET /api/config/xlsx-template`) gives an empty `.xlsx` point list;
+File → Export → **Excel point list** (`GET /api/config/export?format=xlsx`) writes the running config;
+File → Import accepts the `.xlsx`. Sheets: `Devices` (one row per device: `device_id`, `name`, `template`,
+`params`, vendor / location / passwords), `Points` (one row per object: `device_id`, `type`, `instance`, `name`,
+`units`, `value`, `commandable`, `min` / `max`, `cov_increment`, `state_texts`, active / inactive text,
+`behavior`, `alarm_class` / `alarm_high_limit` / `alarm_low_limit` / `alarm_deadband` / `alarm_values` /
+`alarm_time_delay`), `StateTexts` (`ref`, `text_1..N`) and an optional `Network` sheet (`key` / `value`).
+Column names are English; the row below the header is a `#` comment row with Japanese / Chinese descriptions.
+Settings without a column go into the `extra` column as a YAML flow mapping, so export → import round-trips.
+Import errors name the sheet, row and column (`Points row 12, column 'instance': not an integer`); warnings go to
+the event log. Details: [docs/en/excel.md](docs/en/excel.md).
+
 ### Cloning real devices
 
 `sme-bacnet-sim clone` reads real BACnet devices (read-only) and writes a simulator config, so later tests run
@@ -685,8 +699,9 @@ offline. Full reference: `docs/en/cloning.md`.
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}` (or `disable` / `disable-initiation`) |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}` (all optional; naive time = local) |
 | GET/PUT | `/api/config` | whole config (PUT accepts YAML or JSON text) |
-| POST | `/api/config/import` | multipart upload: one YAML / JSON file, or EDE CSV files / zip (field `file`, repeatable) |
-| GET | `/api/config/export?format=yaml\|json\|ede` | download (`ede` = zip of main + state-text CSV) |
+| POST | `/api/config/import` | multipart upload: one YAML / JSON / Excel (`.xlsx`) file, or EDE CSV files / zip (field `file`, repeatable) |
+| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | download (`ede` = zip of main + state-text CSV, `xlsx` = Excel point list) |
+| GET | `/api/config/xlsx-template` | blank Excel point-list template |
 | POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | add / edit / delete device |
 | POST | `/api/devices/{id}/duplicate` | copy of the device (next free ID, `Name (copy)`); returns `{"device_id", "name"}` |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | object configs (template objects expanded) for copying |

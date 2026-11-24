@@ -444,6 +444,18 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 - **Accumulator / Pulse Converter / Loop**（对象类型 23 / 24 / 12）：见上文“对象”。
 - **hi-limit / low-limit** 映射到模拟量对象的 `alarm.high_limit` / `alarm.low_limit`。导入时，报警使用设备的第一个 Notification Class；若文件中没有，则创建 `NC-1`（instance 1，无接收方）。Notification Class 以默认优先级且无接收方的方式导入（EDE 中没有对应的列）。其他报警设置（deadband、time delay、二进制 / 多状态报警值）不会被 EDE 携带。
 
+### Excel 点表
+
+文件 → **下载空白 Excel 模板**（`GET /api/config/xlsx-template`）得到空白 `.xlsx` 点表；
+文件 → 导出 → **Excel 点表**（`GET /api/config/export?format=xlsx`）导出当前配置；文件 → 导入可读入 `.xlsx`。
+工作表：`Devices`（每行一个设备：`device_id`、`name`、`template`、`params`、厂商 / 位置 / 密码）、
+`Points`（每行一个对象：`device_id`、`type`、`instance`、`name`、`units`、`value`、`commandable`、`min` / `max`、
+`cov_increment`、`state_texts`、active / inactive 文本、`behavior`、`alarm_class` / `alarm_high_limit` /
+`alarm_low_limit` / `alarm_deadband` / `alarm_values` / `alarm_time_delay`）、`StateTexts`（`ref`、`text_1..N`）
+以及可选的 `Network` 工作表（`key` / `value`）。列名为英文，表头下一行是带日文 / 中文说明的 `#` 注释行。
+没有专用列的设置以 YAML flow 映射写入 `extra` 列，因此导出 → 导入可完整还原。导入错误带工作表、行号和列名
+（`Points row 12, column 'instance': not an integer`），警告写入事件日志。详见 [docs/zh/excel.md](docs/zh/excel.md)。
+
 ### 克隆真实设备
 
 `sme-bacnet-sim clone` 以只读方式读取真实 BACnet 设备并写出模拟器配置，之后的测试即可离线进行。完整说明：`docs/zh/cloning.md`。
@@ -498,8 +510,9 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（或 `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（均可选；不带时区的时间 = 本地时间） |
 | GET/PUT | `/api/config` | 整个配置（PUT 接受 YAML 或 JSON 文本） |
-| POST | `/api/config/import` | multipart 上传：一个 YAML / JSON 文件，或 EDE CSV 文件 / zip（字段 `file`，可重复） |
-| GET | `/api/config/export?format=yaml\|json\|ede` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip） |
+| POST | `/api/config/import` | multipart 上传：一个 YAML / JSON / Excel（`.xlsx`）文件，或 EDE CSV 文件 / zip（字段 `file`，可重复） |
+| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip，`xlsx` = Excel 点表） |
+| GET | `/api/config/xlsx-template` | 空白 Excel 点表模板 |
 | POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | 添加 / 编辑 / 删除设备 |
 | POST | `/api/devices/{id}/duplicate` | 复制设备（下一个空闲 ID、`Name (copy)`），返回 `{"device_id", "name"}` |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | 用于复制的对象配置（模板对象已展开） |

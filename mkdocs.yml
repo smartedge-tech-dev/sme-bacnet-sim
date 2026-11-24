@@ -87,6 +87,7 @@ nav:
       - text-private-transfer.md
       - behaviors-templates.md
       - ede.md
+      - excel.md
       - cloning.md
       - copy-paste.md
       - http-api.md

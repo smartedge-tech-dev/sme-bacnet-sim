@@ -601,6 +601,19 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
   作成されます。Notification Class はデフォルトの優先度・受信先なしでインポートされます（EDE にはそのための列がありません）。
   その他のアラーム設定（deadband、time delay、バイナリ / マルチステートのアラーム値）は EDE では引き継がれません。
 
+### Excel ポイントリスト
+
+ファイル → **空の Excel テンプレートをダウンロード**（`GET /api/config/xlsx-template`）で空の `.xlsx` ポイントリスト、
+ファイル → エクスポート → **Excel ポイントリスト**（`GET /api/config/export?format=xlsx`）で稼働中の設定を出力し、
+ファイル → インポートで `.xlsx` を読み込めます。シート: `Devices`（1 行 1 デバイス: `device_id`, `name`, `template`,
+`params`, ベンダー / 設置場所 / パスワード）、`Points`（1 行 1 オブジェクト: `device_id`, `type`, `instance`, `name`,
+`units`, `value`, `commandable`, `min` / `max`, `cov_increment`, `state_texts`, active / inactive テキスト, `behavior`,
+`alarm_class` / `alarm_high_limit` / `alarm_low_limit` / `alarm_deadband` / `alarm_values` / `alarm_time_delay`）、
+`StateTexts`（`ref`, `text_1..N`）、任意の `Network` シート（`key` / `value`）。列名は英語で、ヘッダー直下の
+`#` コメント行に日本語 / 中国語の説明があります。専用列のない設定は `extra` 列に YAML の flow マッピングで入るため、
+エクスポート → インポートで元に戻ります。インポートエラーにはシート・行・列が付き
+（`Points row 12, column 'instance': not an integer`）、警告はイベントログに出ます。詳細: [docs/ja/excel.md](docs/ja/excel.md)。
+
 ### 実機デバイスのクローン
 
 `sme-bacnet-sim clone` は実機の BACnet デバイスを（読み取り専用で）読み取り、シミュレータの設定を書き出します。以後のテストは
@@ -672,8 +685,9 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（または `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（すべて任意。タイムゾーンなしの時刻 = ローカル） |
 | GET/PUT | `/api/config` | 設定全体（PUT は YAML または JSON テキストを受け付けます） |
-| POST | `/api/config/import` | multipart アップロード: YAML / JSON ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
-| GET | `/api/config/export?format=yaml\|json\|ede` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip） |
+| POST | `/api/config/import` | multipart アップロード: YAML / JSON / Excel（`.xlsx`）ファイル 1 つ、または EDE の CSV ファイル / zip（フィールド `file`、複数指定可） |
+| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | ダウンロード（`ede` = メイン CSV + ステートテキスト CSV の zip、`xlsx` = Excel ポイントリスト） |
+| GET | `/api/config/xlsx-template` | 空の Excel ポイントリストテンプレート |
 | POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | デバイスの追加 / 編集 / 削除 |
 | POST | `/api/devices/{id}/duplicate` | デバイスの複製（次の空き ID、`Name (copy)`）。`{"device_id", "name"}` を返す |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | コピー用のオブジェクト設定（テンプレートのオブジェクトも展開） |

@@ -20,6 +20,7 @@ from .config import DeviceConfig, SimConfig, dump_yaml, parse_text
 from .ede import export_ede_zip, import_ede_files
 from .engine import Engine
 from .templates import expand_device, template_catalog
+from .xlsx import EXPORT_FILE, TEMPLATE_FILE, blank_template, export_xlsx, import_xlsx
 
 STATIC = Path(__file__).parent / "static"
 
@@ -69,6 +70,9 @@ class TextMessageReq(BaseModel):
 
 class LifeSafetyReq(BaseModel):
     state: str  # BACnetLifeSafetyState, e.g. quiet / alarm / pre-alarm / fault
+
+
+XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def _bad(e: Exception) -> HTTPException:
@@ -268,10 +272,22 @@ def create_app(engine: Engine) -> FastAPI:
             except ValueError as e:
                 raise _bad(e)
             mt, ext = "application/zip", "ede.zip"
+        elif format == "xlsx":
+            body, warnings = export_xlsx(engine.config)
+            if warnings:
+                engine.log_event("config", f"Excel export: {len(warnings)} warnings: " + "; ".join(warnings[:5])
+                                 + (" ..." if len(warnings) > 5 else ""))
+            return Response(body, media_type=XLSX_TYPE,
+                            headers={"Content-Disposition": f'attachment; filename="{EXPORT_FILE}"'})
         else:
             body, mt, ext = dump_yaml(engine.config), "application/x-yaml", "yaml"
         return Response(body, media_type=mt,
                         headers={"Content-Disposition": f'attachment; filename="sme-bacnet-sim-config.{ext}"'})
+
+    @app.get("/api/config/xlsx-template")
+    async def xlsx_template():
+        return Response(blank_template(), media_type=XLSX_TYPE,
+                        headers={"Content-Disposition": f'attachment; filename="{TEMPLATE_FILE}"'})
 
     @app.put("/api/config")
     async def put_config(request: Request):
@@ -284,12 +300,16 @@ def create_app(engine: Engine) -> FastAPI:
 
     @app.post("/api/config/import")
     async def import_config(file: List[UploadFile] = File(...)):
-        # YAML / JSON: a single file. EDE: main CSV (+ state-text CSV) or a zip of both.
+        # YAML / JSON / Excel: a single file. EDE: main CSV (+ state-text CSV) or a zip of both.
         uploads = {(f.filename or f"upload-{i}"): await f.read() for i, f in enumerate(file)}
         names = ", ".join(uploads)
         warnings: List[str] = []
         try:
-            if any(n.lower().endswith((".csv", ".zip")) for n in uploads):
+            if any(n.lower().endswith(".xlsx") for n in uploads):
+                if len(uploads) != 1:
+                    raise ValueError("Excel (.xlsx) import takes a single file")
+                cfg, warnings = import_xlsx(next(iter(uploads.values())), base=engine.config)
+            elif any(n.lower().endswith((".csv", ".zip")) for n in uploads):
                 cfg, warnings = import_ede_files(uploads, base=engine.config)
             elif len(uploads) == 1:
                 fname, data = next(iter(uploads.items()))

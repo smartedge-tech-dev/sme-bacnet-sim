@@ -10,8 +10,9 @@
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}` (or `disable` / `disable-initiation`) |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}` (all optional; naive time = local) |
 | GET/PUT | `/api/config` | whole config (PUT accepts YAML or JSON text) |
-| POST | `/api/config/import` | multipart upload: one YAML / JSON file, or EDE CSV files / zip (field `file`, repeatable) |
-| GET | `/api/config/export?format=yaml\|json\|ede` | download (`ede` = zip of main + state-text CSV) |
+| POST | `/api/config/import` | multipart upload: one YAML / JSON / Excel (`.xlsx`) file, or EDE CSV files / zip (field `file`, repeatable) |
+| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | download (`ede` = zip of main + state-text CSV, `xlsx` = Excel point list) |
+| GET | `/api/config/xlsx-template` | blank Excel point-list template |
 | POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | add / edit / delete device |
 | POST | `/api/devices/{id}/duplicate` | copy of the device (next free ID, `Name (copy)`); returns `{"device_id", "name"}` |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | object configs (template objects expanded) for copying |
