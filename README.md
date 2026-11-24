@@ -625,9 +625,14 @@ offline. Full reference: `docs/en/cloning.md`.
 - **On a gateway (e.g. Moxa, ARM) use Docker** — `--network host` is required for Who-Is / I-Am:
 
   ```sh
-  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # offline; or: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
-  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz      # offline; or: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+    ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
   ```
+
+  Images: `linux/amd64`, `linux/arm64`, `linux/arm/v7` (`uname -m` = `armv7l`, e.g. Moxa). Offline gateways: download
+  `sme-bacnet-sim-<ver>-linux-<arch>.tar.gz` (`amd64` / `arm64` / `arm-v7`) from the GitHub Release, copy it over
+  (e.g. FTP) and `docker load -i` it as is (no need to gunzip). See `docs/en/cloning.md`.
 
   With Python 3.10+: `pip install .` (venv or `pip install --user .`) from a checkout. The PyInstaller executables
   are x86-64 only and do not cover ARM.

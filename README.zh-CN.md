@@ -453,9 +453,14 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 - **在网关（如 Moxa，ARM）上用 Docker**，Who-Is / I-Am 必须使用 `--network host`：
 
   ```sh
-  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # 离线；或：docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
-  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz      # 离线；或：docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+    ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
   ```
+
+  镜像架构：`linux/amd64` / `linux/arm64` / `linux/arm/v7`（`uname -m` 为 `armv7l` 的 Moxa 等）。离线网关：从 GitHub Release
+  下载 `sme-bacnet-sim-<ver>-linux-<arch>.tar.gz`（`amd64` / `arm64` / `arm-v7`），用 FTP 等传上去后直接 `docker load -i`
+  （无需先解压）。详见 `docs/zh/cloning.md`。
 
   有 Python 3.10+ 时，从源码检出 `pip install .`（venv 或 `pip install --user .`）。PyInstaller 可执行文件只有 x86-64，不覆盖 ARM。
 - **目标**：`--who-is LOW-HIGH`（本地广播）、`--address IP[:PORT]`（单播；配合 `--devices ID` 完全不发 Who-Is）、`--network N`（配合 `--address` 时为通往网络 N 的路由器）、`--devices ID,...`，至少给一个。

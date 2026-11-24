@@ -24,9 +24,16 @@ Who-Is-Router-To-Network to find the router.
 A typical setup: SSH into a Linux gateway (e.g. a Moxa) on the customer's BACnet network and run the clone there.
 Docker is the main path; the image runs on any machine with Docker and needs no Python.
 
+Images are published for `linux/amd64`, `linux/arm64` and `linux/arm/v7` (one multi-arch tag; `docker pull` picks
+the right one). Check the gateway with `uname -m`: `x86_64` = amd64, `aarch64` = arm64, `armv7l` = arm-v7 (e.g.
+Moxa UC series). For a gateway without internet access, download the matching offline archive from the GitHub
+Release, `sme-bacnet-sim-<ver>-linux-amd64.tar.gz`, `-linux-arm64.tar.gz` or `-linux-arm-v7.tar.gz`, and copy it
+over (FTP, SCP, USB). `docker load -i` reads the `.tar.gz` as is (no need to gunzip). The loaded image is tagged
+`ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>`, so the commands are the same as after `docker pull`.
+
 ```sh
 # offline gateway: copy the image tar (e.g. by FTP) and load it
-docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar
+docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz
 # or, with internet access
 docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
 
@@ -35,6 +42,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
   sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
 ```
 
+- On an armv7 gateway (e.g. Moxa): `docker load -i sme-bacnet-sim-<ver>-linux-arm-v7.tar.gz`, then the same
+  `docker run`. `docker images` should list `ghcr.io/smartedge-tech-dev/sme-bacnet-sim` with tag `<ver>`.
 - `--network host` is required: Who-Is broadcasts and I-Am answers do not cross a Docker bridge network.
 - `--user` lets the container write into the mounted directory. `python -m sme_bacnet_sim clone ...` works too.
 - Copy `site.yaml` (and `site.yaml.log.jsonl`) back and start the simulator with `-c site.yaml`.

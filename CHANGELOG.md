@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `sme-bacnet-sim clone`: read-only clone of real BACnet devices into a simulator config (Who-Is / ReadProperty /
+  ReadPropertyMultiple only), for offline tests (#1). See `docs/en/cloning.md`.
+- Multi-arch Docker image: `ghcr.io/smartedge-tech-dev/sme-bacnet-sim` is now published for `linux/amd64`,
+  `linux/arm64` and `linux/arm/v7` (e.g. Moxa gateways).
+- Offline image archives on each release: `sme-bacnet-sim-<ver>-linux-amd64.tar.gz`, `-linux-arm64.tar.gz`,
+  `-linux-arm-v7.tar.gz`, for gateways without internet access (`docker load -i <file>.tar.gz`).
+
+### Changed
+- The Docker image is built in two stages so dependencies without a wheel for an architecture are compiled in
+  the builder stage; the final image carries no compiler.
+
 ## [0.1.2] - 2026-11-24
 
 ### Fixed

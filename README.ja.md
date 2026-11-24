@@ -613,9 +613,14 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
 - **ゲートウェイ（Moxa など ARM）では Docker を使います**。Who-Is / I-Am のため `--network host` が必須です:
 
   ```sh
-  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # オフライン。または: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
-  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz      # オフライン。または: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+    ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
   ```
+
+  イメージは `linux/amd64` / `linux/arm64` / `linux/arm/v7`（`uname -m` が `armv7l` の Moxa など）。オフラインの
+  ゲートウェイでは GitHub Release から `sme-bacnet-sim-<ver>-linux-<arch>.tar.gz`（`amd64` / `arm64` / `arm-v7`）を
+  ダウンロードし、FTP などで転送してそのまま `docker load -i` します（gunzip 不要）。詳細は `docs/ja/cloning.md`。
 
   Python 3.10 以上があれば、チェックアウトから `pip install .`（venv または `pip install --user .`）。PyInstaller 実行ファイルは
   x86-64 のみで ARM には対応していません。

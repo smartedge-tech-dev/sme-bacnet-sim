@@ -24,9 +24,16 @@ Who-Is-Router-To-Network を送ることがあります。
 典型的な構成: お客様の BACnet ネットワーク上の Linux ゲートウェイ（Moxa など）に SSH でログインし、そこでクローンを実行します。
 主な方法は Docker で、Docker が動くマシンなら Python なしで実行できます。
 
+イメージは `linux/amd64`、`linux/arm64`、`linux/arm/v7` 向けに公開しています（マルチアーキテクチャの 1 タグで、
+`docker pull` が適切なものを選びます）。ゲートウェイの `uname -m` で確認します: `x86_64` = amd64、`aarch64` = arm64、
+`armv7l` = arm-v7（Moxa UC シリーズなど）。インターネットに出られないゲートウェイでは、GitHub Release から対応する
+オフラインアーカイブ `sme-bacnet-sim-<ver>-linux-amd64.tar.gz`、`-linux-arm64.tar.gz`、`-linux-arm-v7.tar.gz` を
+ダウンロードし、FTP / SCP / USB などで転送します。`docker load -i` は `.tar.gz` をそのまま読めます（gunzip 不要）。
+ロードしたイメージのタグは `ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>` なので、`docker pull` 後と同じコマンドで動きます。
+
 ```sh
 # インターネットに出られないゲートウェイ: イメージの tar を（FTP などで）転送してロード
-docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar
+docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz
 # インターネットに出られる場合
 docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
 
@@ -35,6 +42,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
   sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
 ```
 
+- armv7 のゲートウェイ（Moxa など）: `docker load -i sme-bacnet-sim-<ver>-linux-arm-v7.tar.gz` のあと同じ `docker run`。
+  `docker images` に `ghcr.io/smartedge-tech-dev/sme-bacnet-sim`（タグ `<ver>`）が表示されれば OK です。
 - `--network host` は必須です。Who-Is のブロードキャストと I-Am の応答は Docker の bridge ネットワークを越えません。
 - `--user` でマウントしたディレクトリにコンテナから書き込めます。`python -m sme_bacnet_sim clone ...` も使えます。
 - `site.yaml`（と `site.yaml.log.jsonl`）を持ち帰り、`-c site.yaml` でシミュレータを起動します。

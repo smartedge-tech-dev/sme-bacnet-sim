@@ -19,9 +19,15 @@ AtomicReadFile 等。它也是被动的：从不应答其他设备的请求（�
 
 典型场景：SSH 登录到客户 BACnet 网络上的 Linux 网关（例如 Moxa），在网关上运行克隆。主要方式是 Docker，只要有 Docker 就能运行，不需要 Python。
 
+镜像发布 `linux/amd64`、`linux/arm64`、`linux/arm/v7` 三种架构（同一个多架构 tag，`docker pull` 自动选择）。在网关上用
+`uname -m` 确认：`x86_64` = amd64，`aarch64` = arm64，`armv7l` = arm-v7（如 Moxa UC 系列）。网关不能上外网时，从
+GitHub Release 下载对应的离线包 `sme-bacnet-sim-<ver>-linux-amd64.tar.gz`、`-linux-arm64.tar.gz` 或
+`-linux-arm-v7.tar.gz`，用 FTP / SCP / U 盘传上去。`docker load -i` 可以直接读 `.tar.gz`（无需先解压）。加载后的镜像
+tag 是 `ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>`，命令与 `docker pull` 方式完全相同。
+
 ```sh
 # 不能上外网的网关：把镜像 tar（通过 FTP 等）传上去再加载
-docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar
+docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar.gz
 # 能上外网时
 docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
 
@@ -30,6 +36,8 @@ docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
   sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
 ```
 
+- armv7 网关（如 Moxa）：`docker load -i sme-bacnet-sim-<ver>-linux-arm-v7.tar.gz`，然后执行同样的 `docker run`。
+  `docker images` 中应出现 `ghcr.io/smartedge-tech-dev/sme-bacnet-sim`（tag `<ver>`）。
 - 必须使用 `--network host`：Who-Is 广播和 I-Am 应答无法穿过 Docker bridge 网络。
 - `--user` 让容器能写入挂载的目录。也可以用 `python -m sme_bacnet_sim clone ...`。
 - 把 `site.yaml`（和 `site.yaml.log.jsonl`）拷回来，用 `-c site.yaml` 启动模拟器。
