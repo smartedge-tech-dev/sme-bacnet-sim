@@ -1,0 +1,137 @@
+# SME BACnetSim demo: a small office floor.
+# Every device lives on virtual network 100 behind the router on UDP 47808.
+network:
+  ip: auto              # or e.g. 192.168.1.10/24 (pick the NIC your BACnet client sees)
+  port: 47808
+  network_number: 1     # IP-side network number (must differ from virtual_network)
+  virtual_network: 100
+  mode: normal          # "bbmd" lets clients on other subnets register as foreign devices
+  router:
+    device_id: 4194000
+    name: SME-BACnetSim-Router
+
+simulation:
+  tick_seconds: 1.0
+  time_scale: 1.0       # 60 = one simulated minute per second (day/night curves move faster)
+  history_size: 600
+
+devices:
+  - device_id: 1001
+    name: Lighting-1F
+    template: lighting
+    params: {zones: 4, dimmable: true, watts_per_zone: 150}
+    location: 1F Office
+
+  - device_id: 1002
+    name: AC-1F-East
+    template: split_ac
+    params: {rated_kw: 2.8, initial_temp: 29}
+    location: 1F East
+
+  - device_id: 1003
+    name: AC-1F-West
+    template: split_ac
+    params: {rated_kw: 4.0}
+    location: 1F West
+    objects:            # override / extend template objects by name
+      - name: SetPoint
+        type: av
+        value: 24.0
+        commandable: true
+
+  - device_id: 1004
+    name: AHU-1
+    template: ahu
+    objects:
+      # PID loop: opens the cooling valve while the supply air is above its setpoint (direct action)
+      - type: loop
+        name: SupplyTempLoop
+        controlled_object: SupplyTemp
+        manipulated_object: CoolValve
+        setpoint_object: SupplyTempSP
+        proportional_constant: 8
+        integral_constant: 0.2
+        min: 0
+        max: 100
+        units: percent
+        priority_for_writing: 10
+      # sequence program: write program-change (load / run / halt / restart / unload) to drive program-state
+      - {type: program, name: AHU-Sequence, instance_of: AHU-Seq-v2, program_state: running,
+         description: start/stop sequence}
+      # maintenance log: record access (one line = one record); AtomicWriteFile appends are kept by Save
+      - type: file
+        name: MaintenanceLog
+        file_type: text/plain
+        access: record
+        content: |-
+          2026-04-01 filter replaced
+          2026-10-01 belt tension checked
+
+  - device_id: 1005
+    name: Meter-Main
+    template: power_meter
+    params: {nominal_voltage: 200, frequency: 50, max_current: 120}
+    objects:
+      # pulse output of the meter: 100 pulses per kWh, counted by an accumulator
+      - {type: acc, name: EnergyPulses, units: kilowatt-hours, scale: 0.01, max: 99999999,
+         behavior: {type: pulse, rate: "ActivePower * 100 / 3600"}}
+      # pulse converter: kWh from the accumulator's count delta
+      - {type: pc, name: EnergyFromPulses, input_object: EnergyPulses, scale_factor: 0.01, units: kilowatt-hours,
+         cov_increment: 0.1}
+
+  - device_id: 1006
+    name: Room-Sensor-101
+    template: env_sensor
+    objects:
+      # Algorithmic reporting: an Event Enrollment watches the template's Temperature point, which has no
+      # intrinsic alarm of its own, and reports through the notification class below.
+      - {type: nc, name: RoomAlarms, instance: 1, priority: [100, 100, 200], ack_required: [true, true, false]}
+      - type: ee
+        name: RoomTempWatch
+        description: Room temperature outside 18-28 degC
+        monitored_object: Temperature
+        event_type: out-of-range
+        event_parameters: {low_limit: 18, high_limit: 28, deadband: 0.5}
+        notification_class: RoomAlarms
+        time_delay: 60
+      # Life safety: a smoke detector that raises an alarm now and then (latched until a LifeSafetyOperation
+      # reset) and a zone that follows it.
+      - type: lsp
+        name: Smoke-101
+        description: Ceiling smoke detector
+        behavior: {type: random_alarm, probability: 0.0005, state: alarm}
+      - {type: lsz, name: Zone-101, description: Room 101 fire zone, zone_members: [Smoke-101]}
+    private_transfer:                                     # ConfirmedPrivateTransfer answers
+      - {vendor_id: 999, service_number: 1}               # echo the parameters
+      - {vendor_id: 999, service_number: 2, result: OK}   # fixed value
+
+  - device_id: 1007
+    name: PV-Roof
+    template: pv_inverter
+    params: {capacity_kw: 30}
+
+  # A fully custom device: objects are declared one by one.
+  - device_id: 1100
+    name: Custom-Pump
+    description: Chilled water pump with a VFD
+    objects:
+      - {type: bo, name: PumpCmd, value: 0, active_text: "ON", inactive_text: "OFF"}  # quote ON/OFF: YAML reads them as booleans
+      - {type: bi, name: PumpStatus, behavior: {type: expr, expr: PumpCmd}}
+      - {type: ao, name: SpeedCmd, units: percent, value: 80, min: 0, max: 100}
+      - type: ai
+        name: Speed
+        units: percent
+        cov_increment: 0.5
+        behavior: {type: follow, target: "PumpStatus * SpeedCmd", tau: 8, noise: 0.2}
+      - type: ai
+        name: Flow
+        units: cubic-meters-per-hour
+        cov_increment: 0.5
+        behavior: {type: expr, expr: "Speed / 100 * 45 + noise(0.3) * PumpStatus"}
+      - type: ai
+        name: MainPower
+        units: kilowatts
+        description: Reads another device's point via pv()
+        cov_increment: 0.1
+        behavior: {type: expr, expr: "pv('Meter-Main', 'ActivePower')"}
+      - {type: msv, name: OperationMode, value: 1, states: [Auto, Manual, Maintenance], commandable: true}

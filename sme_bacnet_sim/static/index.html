@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SME BACnetSim</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/shell/shell.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Loaded in <head> so the stored theme applies before first paint. -->
+  <script src="/static/shell/shell.js" data-storage="sme-bacnet-sim"></script>
+</head>
+<body class="sh-tool">
+<!-- Shell.init() inserts the header before .sh-body and the footer after it. -->
+<div class="sh-body">
+  <div class="layout">
+    <aside class="sidebar">
+      <input id="search" class="search" data-i18n-placeholder="side.filter" data-i18n-aria-label="side.filter">
+      <ul id="devList" class="devlist"></ul>
+      <button class="btn primary wide" id="btnAdd" data-i18n="side.add">+ Add device</button>
+    </aside>
+
+    <main class="main">
+      <section id="devHeader" class="devheader"></section>
+      <div class="tablewrap">
+        <table class="points">
+          <thead><tr>
+            <th data-i18n="col.name">Name</th><th data-i18n="col.object">Object</th>
+            <th class="num" data-i18n="col.value">Value</th><th data-i18n="col.units">Units</th>
+            <th data-i18n="col.pri" data-i18n-title="col.pri.title">Pri</th>
+            <th data-i18n="col.oos" data-i18n-title="col.oos.title">OOS</th>
+            <th data-i18n="col.behavior">Behavior</th><th data-i18n="col.command">Command</th>
+          </tr></thead>
+          <tbody id="points"></tbody>
+        </table>
+      </div>
+      <section class="trend" id="trend" hidden>
+        <div class="trendhead"><span id="trendTitle"></span>
+          <button class="btn small" id="trendClose" data-i18n-title="trend.close" data-i18n-aria-label="trend.close">×</button></div>
+        <canvas id="trendCanvas" height="180"></canvas>
+        <div id="schedView" class="schedview" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <section class="logbar" id="logbar">
+    <div class="loghead" id="logHead"><span data-i18n="log.title">Event log</span> <span id="logCount"></span></div>
+    <ul id="log" class="log"></ul>
+  </section>
+</div>
+
+<input type="file" id="fileImport" accept=".yaml,.yml,.json,.csv,.zip" multiple hidden>
+
+<dialog id="dlgYaml" class="dialog sh-dialog">
+  <form method="dialog" class="dlgform">
+    <h3 id="yamlTitle"></h3>
+    <textarea id="yamlText" spellcheck="false"></textarea>
+    <div class="err" id="yamlErr"></div>
+    <div class="dlgbtns">
+      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
+      <button class="btn primary" id="yamlApply" value="default" data-i18n="dlg.apply">Apply</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgAdd" class="dialog sh-dialog">
+  <form method="dialog" class="dlgform">
+    <h3 data-i18n="add.title">Add device</h3>
+    <label><span data-i18n="add.template">Template</span> <select id="addTemplate"></select></label>
+    <div class="row2">
+      <label><span data-i18n="add.id">Device ID</span> <input id="addId" type="number" min="0" max="4194302" data-i18n-placeholder="add.id.ph"></label>
+      <label><span data-i18n="add.name">Name</span> <input id="addName" required></label>
+    </div>
+    <label><span data-i18n="add.params">Parameters (YAML)</span> <textarea id="addParams" rows="5" spellcheck="false"></textarea></label>
+    <div class="err" id="addErr"></div>
+    <div class="dlgbtns">
+      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
+      <button class="btn primary" id="addApply" value="default" data-i18n="add.submit">Add</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgProps" class="dialog sh-dialog propsdlg">
+  <form method="dialog" class="dlgform">
+    <h3 id="propsTitle"></h3>
+    <div class="propswrap"><table class="props">
+      <thead><tr><th class="num" data-i18n="props.col.id">ID</th><th data-i18n="props.col.name">Property</th>
+        <th data-i18n="props.col.value">Value</th><th data-i18n="props.col.type">Datatype</th>
+        <th data-i18n="props.col.edit">Write</th></tr></thead>
+      <tbody id="propsBody"></tbody>
+    </table></div>
+    <div class="err" id="propsErr"></div>
+    <div class="dlgbtns">
+      <button class="btn" type="button" id="propsRefresh" data-i18n="props.refresh">Refresh</button>
+      <button class="btn primary" value="cancel" data-i18n="alarms.close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/static/i18n/ja.js"></script>
+<script src="/static/i18n/zh.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

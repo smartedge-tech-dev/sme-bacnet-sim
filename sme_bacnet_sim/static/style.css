@@ -1,0 +1,162 @@
+/* SME BACnetSim app styles. Shell tokens (--ink, --muted, --line, --accent, --pale, --surface, ...) come from shell/shell.css. */
+
+/* ------------------------------------------------------------------ header status (BACnet specific content) */
+.st-clock { font-family: var(--mono); font-size: 14px; color: var(--ink); }
+.st-run {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; cursor: pointer;
+  border: 1px solid var(--line); background: none; color: var(--ok); font: 600 10px var(--font); letter-spacing: .14em; text-transform: uppercase;
+}
+.st-run::before { content: ""; width: 7px; height: 7px; background: currentColor; }
+.st-run.paused { color: var(--warn); }
+.st-run.paused::before { width: 7px; height: 7px; background: none; border-left: 2px solid currentColor; border-right: 2px solid currentColor; }
+.st-run:hover { border-color: currentColor; }
+.st-net { font-family: var(--mono); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
+.conn { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--ok); }
+.conn.off { background: var(--bad); }
+
+/* ------------------------------------------------------------------ layout */
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 270px minmax(0, 1fr); }
+.spacer { flex: 1; }
+
+.sidebar {
+  border-right: 1px solid var(--line); background: var(--pale); padding: 12px;
+  display: flex; flex-direction: column; gap: 10px; min-height: 0;
+}
+.search { width: 100%; }
+.devlist { list-style: none; margin: 0 -12px; padding: 0; overflow: auto; flex: 1; border-top: 1px solid var(--line); }
+.devlist li {
+  padding: 8px 12px; cursor: pointer; display: grid; border-bottom: 1px solid var(--line); border-left: 2px solid transparent;
+  grid-template-columns: 22px 1fr auto; gap: 2px 6px; align-items: center;
+}
+.devlist li:hover { background: var(--surface); }
+.devlist li.sel { background: var(--surface); border-left-color: var(--accent); }
+.devlist li.sel .dn { color: var(--accent); }
+.devlist .ico { font-size: 15px; grid-row: span 2; text-align: center; }
+.devlist .dn { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.devlist .di { color: var(--muted); font-size: 11px; font-family: var(--mono); grid-column: 2 / 4; }
+.devlist .badge { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.devlist .badge.err { color: var(--bad); }
+
+.main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.devheader {
+  display: flex; align-items: center; gap: 12px; padding: 12px 18px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+}
+.devheader h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: .03em; }
+.devheader .meta { color: var(--muted); font-family: var(--mono); font-size: 11px; overflow-wrap: anywhere; }
+.devheader label.meta { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font); }
+
+/* ------------------------------------------------------------------ points table */
+.tablewrap { overflow: auto; flex: 1; min-height: 0; }
+table.points { width: 100%; border-collapse: collapse; }
+.points th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface); text-align: left; font-weight: 600;
+  color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 7px 10px; border-bottom: 1px solid var(--ink);
+}
+.points td { padding: 5px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.points tr { cursor: pointer; }
+.points tbody tr:hover td { background: var(--pale); }
+.points tr.sel td { background: var(--accent-weak); }
+.points tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+.points .num { text-align: right; }
+.points .val { font-family: var(--mono); font-size: 13px; font-weight: 600; text-align: right; transition: background 1s; }
+.points .val.flash { background: var(--flash); transition: none; }
+.points .obj, .points .beh { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.points .nm small { display: block; color: var(--muted); font-size: 11px; }
+.points .errmark { color: var(--bad); cursor: help; }
+.pill { padding: 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .04em; background: var(--surface); border: 1px solid var(--line); }
+.pill.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.cmd { display: flex; gap: 4px; align-items: center; }
+.cmd input[type=number] { width: 80px; }
+.prio { font-family: var(--mono); color: var(--warn); }
+
+/* ------------------------------------------------------------------ trend */
+.trend { flex: none; border-top: 1px solid var(--line); background: var(--surface); padding: 8px 18px 10px; }
+.trendhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 12px; }
+#trendCanvas { width: 100%; height: 180px; display: block; }
+
+/* ------------------------------------------------------------------ event log */
+.logbar { flex: none; background: var(--pale); border-top: 1px solid var(--line); max-height: 160px; display: flex; flex-direction: column; }
+.logbar[hidden] { display: none; }
+.loghead {
+  padding: 5px 18px; font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); cursor: pointer; user-select: none;
+}
+.loghead:hover { color: var(--accent); }
+.log { list-style: none; margin: 0; padding: 0 18px 6px; overflow: auto; font-family: var(--mono); font-size: 12px; }
+.log li { padding: 1px 0; }
+.log .t { color: var(--muted); margin-right: 8px; }
+.log .k-error { color: var(--bad); }
+.log .k-bacnet-write { color: var(--accent); }
+.logbar.collapsed .log { display: none; }
+
+/* ------------------------------------------------------------------ dialogs */
+.dialog { width: min(760px, calc(100vw - 32px)); }
+.dlgform { display: flex; flex-direction: column; gap: 12px; padding: 20px; }
+.dlgform h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .03em; }
+.dlgform label { display: flex; flex-direction: column; gap: 3px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+.dlgform label > select, .dlgform label > input, .dlgform label > textarea { color: var(--ink); font-size: 13px; font-weight: 400; letter-spacing: 0; }
+.dlgform textarea { font-family: var(--mono); font-size: 12px; }
+#yamlText { min-height: 55vh; }
+.row2 { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.dlgbtns { display: flex; justify-content: flex-end; gap: 8px; }
+.err { color: var(--bad); white-space: pre-wrap; font-family: var(--mono); font-size: 12px; }
+.empty { color: var(--muted); padding: 40px; text-align: center; }
+
+/* ------------------------------------------------------------------ narrow screens */
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto auto; }
+  .sidebar { max-height: 34vh; border-right: 0; border-bottom: 1px solid var(--line); }
+  .main { min-height: 0; }
+  .tablewrap { flex: none; max-height: 65vh; }
+  .logbar { max-height: 30vh; }
+}
+@media (max-width: 760px) {
+  .st-net { display: none; }
+  .devheader { padding: 10px 16px; }
+  .row2 { grid-template-columns: 1fr; }
+  .trend { padding: 8px 16px 10px; }
+}
+@media (max-width: 400px) {
+  .st-clock { font-size: 13px; }
+  .st-run { padding: 4px 6px; }
+  .st-run-lbl { display: none; }
+}
+
+/* schedule / calendar detail (read-only) in the trend panel */
+.schedview { max-height: 220px; overflow: auto; font-size: 12px; margin-top: 6px; }
+.schedview table { border-collapse: collapse; width: 100%; }
+.schedview th, .schedview td { text-align: left; padding: 2px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.schedview th { width: 6em; font-weight: 600; }
+.schedview h4 { margin: 8px 0 2px; font-size: 12px; }
+
+/* ------------------------------------------------------------------ alarms */
+.st-alarm { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font: inherit; font-size: 12px;
+  font-weight: 600; color: var(--warn); background: none; border: 1px solid currentColor; cursor: pointer; }
+.st-alarm.unacked { color: var(--bad); }
+.st-alarm[hidden] { display: none; }
+.abadge { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 10px; font-weight: 600; letter-spacing: .03em;
+  color: var(--muted); border: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.abadge.alarm { color: var(--bad); border-color: var(--bad); }
+.abadge.fault { color: var(--warn); border-color: var(--warn); }
+.abadge.unacked::after { content: " \25CF"; }
+table.alarms { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.alarms th, table.alarms td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+table.alarms .num { text-align: right; font-family: var(--mono); }
+table.alarms small { color: var(--muted); font-family: var(--mono); }
+
+/* point multi-select (copy / paste) and the property grid */
+.points tr.picked td { background: var(--accent-weak); }
+.points tr.picked td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.propbtn { margin-right: 6px; padding: 0 5px; opacity: .55; }
+.points tr:hover .propbtn { opacity: 1; }
+.propsdlg { width: min(980px, calc(100vw - 32px)); }
+.propswrap { max-height: 60vh; overflow: auto; }
+table.props { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.props th, table.props td { padding: 3px 6px; border-bottom: 1px solid var(--line, #ddd); text-align: left; vertical-align: top; }
+table.props td.pv { font-family: ui-monospace, monospace; word-break: break-all; max-width: 380px; }
+table.props td.pe { white-space: nowrap; }
+table.props td.pe input { width: 120px; }
+table.props td.pe select, table.props td.pe input, table.props td.pe button { margin-right: 4px; }
+table.props .muted { color: var(--muted); }
