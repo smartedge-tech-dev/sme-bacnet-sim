@@ -20,7 +20,7 @@ hiddenimports = (
 )
 
 a = Analysis(
-    [os.path.join(root, "sme_bacnet_sim", "__main__.py")],
+    [os.path.join(root, "packaging", "entry.py")],
     pathex=[root],
     datas=datas,
     hiddenimports=hiddenimports,
