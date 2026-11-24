@@ -161,6 +161,56 @@ Gateways often run a BACnet client already (e.g. BAC0 with host networking on `<
 - **Device instance**: the clone client is itself a BACnet device, default instance **4194300**. Choose
   another one with `--client-device-id` if it collides with the existing client's instance.
 
+## Recording replay CSVs
+
+Clone the structure, record the values, replay them offline: `sme-bacnet-sim record` reads present-values from the
+real devices (read-only) into a CSV that the `replay` behavior plays back
+([Behaviors](behaviors-templates.md)).
+
+```sh
+sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+```
+
+- **Points**: taken from the config `-c` (normally the YAML written by `clone`; keep-ids is required so the
+  device / instances match the real device). `--points NAME,...` limits them. Without `-c`:
+  `--points [DEVICE/]TYPE:INSTANCE[=COLUMN],...`, e.g. `--points ai:1=OAT,bi:3=Occupied` (the column defaults to
+  `analog-input:1`). Recordable: analog / binary / multi-state input / output / value, accumulator,
+  pulse-converter and loop (present-value). A point name used on several devices becomes the column `DEVICE/NAME`.
+- **CSV**: column 1 is `time` (ISO local datetime, seconds), then one column per point. Binary is written as
+  `active` / `inactive`, multi-state as the state number, analog with 7 significant digits. An unreadable value is
+  an empty cell (replay holds the previous value; the first row needs a value, otherwise replay reports an error)
+  and gives one warning per point.
+- **Reading**: present-value by ReadPropertyMultiple, one request per device per `--batch` (default 20) objects;
+  ReadProperty if the device rejects RPM; `--no-rpm` forces ReadProperty. `--rate` still caps requests / second.
+  If a sample takes longer than `--interval`, the missed ticks are skipped with a warning.
+- **Stop**: `--duration` (`90`, `30s`, `15m`, `8h`, `1d`), `--count N` or Ctrl-C. The file is flushed after every
+  row, so nothing is lost. An existing file is an error unless `--resume`, which appends if the columns are
+  identical (replay interpolates a gap in time linearly for analog points).
+- **Trend logs** (`--trend-log`): reads the log-buffer of the selected Trend Log objects once with ReadRange (by
+  position, in chunks of 50) and writes one row per timestamp (union of all logs; an empty cell means no record at
+  that time, leading gaps are back-filled with the column's first value). With `-c` the config's trend-log
+  objects are used (column = Trend Log name); without, `--points trend-log:1=OAT,...`. Status, time-change and
+  failure records are skipped.
+- **Connection options** are the same as `clone`: `--address`, `--network`, `--who-is`, `--devices`, `--ip`,
+  `--port`, `--foreign-bbmd` / `--foreign-ttl`, `--rate`, `--timeout`, `--retries`, `--client-device-id`.
+- **Read-only**: the same guarded client as `clone`. Polling sends only Who-Is, ReadProperty and
+  ReadPropertyMultiple; `--trend-log` adds ReadRange (also a read service). `<out>.log.jsonl` holds warnings and
+  errors (individual values are not logged).
+
+Use the result in the config:
+
+```yaml
+behavior: {type: replay, file: data/site.csv, column: OAT}
+```
+
+With Docker (see [Running it on a gateway](#running-it-on-a-gateway-docker-main-path)):
+
+```sh
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+  ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> \
+  sme-bacnet-sim record -c /out/site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o /out/site.csv
+```
+
 ## Offline: EDE
 
 If nothing can run on the gateway, export an EDE file from the customer's BACnet tool and use the

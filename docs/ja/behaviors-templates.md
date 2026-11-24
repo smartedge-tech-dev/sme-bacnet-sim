@@ -35,6 +35,8 @@ time,oat,rh,occupied,mode
    behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
 ```
 
+CSV は `sme-bacnet-sim record` で実機から（読み取り専用で）記録できます。[クローン](cloning.md)を参照。
+
 式はサンドボックス化された Python の式です。使用できる名前: デバイスのオブジェクト名、`t`（シミュレーション秒）、
 `dt`、`hour`（シミュレーション時計、0–24）、他のデバイスを読み取る `pv("Device", "Object")`、および
 `sin cos exp log sqrt pi abs min max round clamp random uniform noise gauss`。

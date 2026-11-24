@@ -37,6 +37,8 @@ time,oat,rh,occupied,mode
    behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
 ```
 
+CSV can be recorded from a real device (read-only) with `sme-bacnet-sim record`, see [Cloning](cloning.md#recording-replay-csvs).
+
 Expressions are sandboxed Python expressions. Available names: the device's object names, `t` (sim seconds),
 `dt`, `hour` (sim clock, 0–24), `pv("Device", "Object")` to read another device, and
 `sin cos exp log sqrt pi abs min max round clamp random uniform noise gauss`.

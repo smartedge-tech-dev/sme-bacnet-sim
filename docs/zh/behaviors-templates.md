@@ -34,6 +34,8 @@ time,oat,rh,occupied,mode
    behavior: {type: replay, file: data/day-profile.csv, column: occupied, loop: true, offset: "06:00:00"}}
 ```
 
+CSV 可用 `sme-bacnet-sim record` 从真实设备（只读）录制，见[克隆](cloning.md)。
+
 表达式是沙箱化的 Python 表达式。可用名称：设备内的对象名称、`t`（仿真秒数）、`dt`、`hour`（仿真时钟，0–24）、用于读取其他设备的 `pv("Device", "Object")`，以及 `sin cos exp log sqrt pi abs min max round clamp random uniform noise gauss`。
 
 处于 **out of service** 的对象会停止跟随其 behavior，这就是注入固定值或故障的方法。在 UI 中写入模拟输入时，会自动将其置为 out of service。

@@ -61,6 +61,9 @@ def main(argv=None) -> int:
     if rest[:1] == ["clone"]:  # subcommand; without it the options below are unchanged
         from .clone import main as clone_main
         return clone_main(rest[1:])
+    if rest[:1] == ["record"]:
+        from .record import main as record_main
+        return record_main(rest[1:])
     ap =argparse.ArgumentParser(prog="sme-bacnet-sim", description="BACnet/IP device simulator with a web UI")
     ap.add_argument("-c", "--config", help="YAML/JSON config file (default: configs/demo-building.yaml if present)")
     ap.add_argument("--ip", help='BACnet bind address, e.g. "192.168.1.10/24" (overrides config)')

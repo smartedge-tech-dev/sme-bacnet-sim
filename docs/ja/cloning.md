@@ -154,6 +154,51 @@ present value はスナップショットで、クローンした設定に behav
 - **デバイスインスタンス**: クローンクライアント自体も BACnet デバイスで、既定のインスタンスは **4194300** です。
   既存クライアントのインスタンスと衝突する場合は `--client-device-id` で変更してください。
 
+## replay 用 CSV の記録
+
+構造をクローンし、値を記録し、オフラインで再生します。`sme-bacnet-sim record` は実機から present-value を（読み取り専用で）
+読み取り、`replay` Behavior が再生する CSV に書き出します（[Behavior](behaviors-templates.md)）。
+
+```sh
+sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+```
+
+- **ポイント**: `-c` の設定から取得します（通常は `clone` が書いた YAML。デバイス / インスタンスを実機と一致させるため keep-ids が必須）。
+  `--points NAME,...` で絞り込めます。`-c` なしの場合は `--points [DEVICE/]TYPE:INSTANCE[=COLUMN],...`、例:
+  `--points ai:1=OAT,bi:3=Occupied`（列名の既定は `analog-input:1`）。記録できるのは analog / binary / multi-state の
+  input / output / value、accumulator、pulse-converter、loop（present-value）。複数デバイスで同じポイント名がある場合、列名は
+  `DEVICE/NAME` になります。
+- **CSV**: 1 列目は `time`（ISO のローカル日時、秒単位）、以降はポイントごとに 1 列。binary は `active` / `inactive`、
+  multi-state は状態番号、analog は有効数字 7 桁。読めなかった値は空セルになり（replay は直前の値を保持。ただし先頭行には値が
+  必要で、なければ replay がエラーを報告）、ポイントごとに警告を 1 回出します。
+- **読み取り**: present-value を ReadPropertyMultiple で読みます（デバイスごと、`--batch`（既定 20）オブジェクトにつき 1 要求）。
+  デバイスが RPM を拒否した場合は ReadProperty にフォールバックし、`--no-rpm` で ReadProperty に固定できます。`--rate`
+  （要求数/秒の上限）も有効です。1 回のサンプリングが `--interval` より長くかかった場合、飛ばしたタイミングは警告付きでスキップします。
+- **停止**: `--duration`（`90`、`30s`、`15m`、`8h`、`1d`）、`--count N`、または Ctrl-C。1 行ごとにフラッシュするため何も失われません。
+  既存ファイルはエラーですが、`--resume` を付けると列が同一の場合に追記します（時間の空きは、analog ポイントでは replay が線形補間します）。
+- **Trend Log**（`--trend-log`）: 選択した Trend Log オブジェクトの log-buffer を ReadRange で 1 回だけ（位置指定、50 件ずつ）読み、
+  タイムスタンプごとに 1 行を書きます（全ログの和集合。空セルはその時刻の記録なし、先頭の欠けはその列の最初の値で埋めます）。
+  `-c` ありの場合は設定内の Trend Log オブジェクトを使い（列名 = Trend Log の名前）、なしの場合は `--points trend-log:1=OAT,...`。
+  Status、time-change、failure のレコードはスキップします。
+- **接続オプション**は `clone` と同じです: `--address`、`--network`、`--who-is`、`--devices`、`--ip`、`--port`、
+  `--foreign-bbmd` / `--foreign-ttl`、`--rate`、`--timeout`、`--retries`、`--client-device-id`。
+- **読み取り専用**: `clone` と同じガード付きクライアントです。ポーリングは Who-Is、ReadProperty、ReadPropertyMultiple のみを送信し、
+  `--trend-log` はこれに ReadRange（これも読み取りサービス）を加えます。`<out>.log.jsonl` に警告とエラーを記録します（個々の値は記録しません）。
+
+結果は設定で次のように使います:
+
+```yaml
+behavior: {type: replay, file: data/site.csv, column: OAT}
+```
+
+Docker の例（[ゲートウェイ上での実行](cloning.md)と同様）:
+
+```sh
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+  ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> \
+  sme-bacnet-sim record -c /out/site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o /out/site.csv
+```
+
 ## オフライン: EDE
 
 ゲートウェイで何も実行できない場合は、お客様の BACnet ツールから EDE ファイルをエクスポートし、

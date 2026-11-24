@@ -506,6 +506,12 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 - 克隆内容：设备信息，所有支持的对象类型的名称、单位、状态文本、COV 增量、commandable、报警参数，Notification Class、Schedule、Calendar、Trend Log 及其他支持对象的设置。不克隆：文件内容、按地址指定的接收方、指向其他设备的引用（日志中有警告）。
 - **与网关上已有 BACnet 客户端共存**（例如占用 47808 的 BAC0）：用 `--port 47809`；I-Am 可能发往 47808，所以用 `--address <设备IP> --devices <id>`；4194300 冲突时指定 `--client-device-id`。
 - **离线**：现场无法运行任何程序时，从客户工具导出 EDE，使用 EDE 导入。
+- **录制 replay 用数值**：`sme-bacnet-sim record` 轮询 present-value（RPM，失败回退 ReadProperty）写成 `replay` Behavior 用的 CSV；
+  `--trend-log` 用 ReadRange 读取 Trend Log 缓冲区。与 clone 一样只读；用 `--duration` / `--count` / Ctrl-C 停止，`--resume` 追加。详见 `docs/zh/cloning.md`。
+
+  ```sh
+  sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+  ```
 
 ### 复制 / 粘贴与属性面板
 

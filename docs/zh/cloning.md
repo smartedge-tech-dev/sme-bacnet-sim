@@ -141,6 +141,47 @@ present value 是快照；克隆出的配置中没有 behavior。
 - **设备 instance**：克隆客户端本身也是一个 BACnet 设备，默认 instance 为 **4194300**。若与已有客户端的 instance 冲突，
   用 `--client-device-id` 换一个。
 
+## 录制 replay 用 CSV
+
+先克隆结构，再录制数值，然后离线回放：`sme-bacnet-sim record` 以只读方式从真实设备读取 present-value，写成 `replay` Behavior 可回放的
+CSV（见 [Behavior](behaviors-templates.md)）。
+
+```sh
+sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+```
+
+- **点**：取自 `-c` 的配置（通常是 `clone` 写出的 YAML；必须保留原 ID，设备 / 实例号才与真实设备一致）。`--points NAME,...` 可限定范围。
+  不带 `-c` 时用 `--points [DEVICE/]TYPE:INSTANCE[=COLUMN],...`，例如 `--points ai:1=OAT,bi:3=Occupied`（列名默认 `analog-input:1`）。
+  可录制：analog / binary / multi-state 的 input / output / value，accumulator、pulse-converter、loop（present-value）。
+  同一点名出现在多台设备上时，列名为 `DEVICE/NAME`。
+- **CSV**：第 1 列 `time`（ISO 本地日期时间，精确到秒），之后每个点一列。binary 写 `active` / `inactive`，multi-state 写状态号，analog 取 7 位有效数字。
+  读不到的值为空单元格（replay 保持上一个值；首行必须有值，否则 replay 报错），每个点只警告一次。
+- **读取**：用 ReadPropertyMultiple 读 present-value，每台设备每 `--batch`（默认 20）个对象一次请求；设备拒绝 RPM 时回退 ReadProperty，
+  `--no-rpm` 强制使用 ReadProperty。`--rate` 仍限制每秒请求数。若一次采样耗时超过 `--interval`，错过的时刻会跳过并给出警告。
+- **停止**：`--duration`（`90`、`30s`、`15m`、`8h`、`1d`）、`--count N` 或 Ctrl-C。每写一行即刷新，不会丢数据。已有文件会报错，
+  加 `--resume` 时若列完全一致则追加（时间上的空档，analog 点由 replay 线性插值）。
+- **Trend Log**（`--trend-log`）：用 ReadRange 一次性读取所选 Trend Log 对象的 log-buffer（按位置，每次 50 条），每个时间戳写一行
+  （所有日志的并集；空单元格表示该时刻无记录，开头的空缺用该列的第一个值回填）。带 `-c` 时使用配置中的 Trend Log 对象（列名 = Trend Log 名称），
+  不带时用 `--points trend-log:1=OAT,...`。status、time-change、failure 记录会被跳过。
+- **连接选项**与 `clone` 相同：`--address`、`--network`、`--who-is`、`--devices`、`--ip`、`--port`、`--foreign-bbmd` / `--foreign-ttl`、
+  `--rate`、`--timeout`、`--retries`、`--client-device-id`。
+- **只读**：与 `clone` 使用同一个受保护的客户端。轮询只发送 Who-Is、ReadProperty、ReadPropertyMultiple；`--trend-log` 另加 ReadRange（同样是读服务）。
+  `<out>.log.jsonl` 记录警告和错误（不记录单个数值）。
+
+在配置中使用录制结果：
+
+```yaml
+behavior: {type: replay, file: data/site.csv, column: OAT}
+```
+
+Docker 示例（同[在网关上运行](cloning.md)）：
+
+```sh
+docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out \
+  ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> \
+  sme-bacnet-sim record -c /out/site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o /out/site.csv
+```
+
 ## 离线：EDE
 
 网关上什么都不能运行时，从客户的 BACnet 工具导出 EDE 文件，使用 [EDE 导入](ede.md)。EDE 携带的属性较少（没有报警细节、计划和接收方）。

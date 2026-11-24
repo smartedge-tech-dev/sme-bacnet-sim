@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `sme-bacnet-sim record` (#4): poll present-values into a replay CSV (RPM with RP fallback, `--interval` / `--duration` / `--count`, `--resume`) and `--trend-log` (ReadRange of Trend Log buffers); read-only like clone. See `docs/en/cloning.md`.
+
 ## [0.2.0] - 2026-11-24
 
 ### Added

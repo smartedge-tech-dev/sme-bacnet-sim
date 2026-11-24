@@ -678,6 +678,13 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
 - **ゲートウェイ上の既存 BACnet クライアントとの共存**（例: 47808 の BAC0）: `--port 47809` を使います。I-Am は 47808 宛てに
   なることがあるため `--address <デバイス IP> --devices <id>` を使い、4194300 が衝突する場合は `--client-device-id` を指定します。
 - **オフライン**: 現場で何も実行できない場合は、お客様のツールから EDE をエクスポートして EDE インポートを使います。
+- **replay 用の値の記録**: `sme-bacnet-sim record` が present-value をポーリング（RPM、失敗時は ReadProperty）して `replay`
+  Behavior 用の CSV に書き出します。`--trend-log` では Trend Log のバッファを ReadRange で読みます。clone と同様に読み取り専用で、
+  `--duration` / `--count` / Ctrl-C で停止し、`--resume` で追記します。詳細は `docs/ja/cloning.md`。
+
+  ```sh
+  sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+  ```
 
 ### コピー / 貼り付けとプロパティグリッド
 

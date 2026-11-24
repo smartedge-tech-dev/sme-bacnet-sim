@@ -693,6 +693,13 @@ offline. Full reference: `docs/en/cloning.md`.
 - **Coexisting with another BACnet client** on the gateway (e.g. BAC0 on 47808): use `--port 47809`; I-Am answers
   may go to 47808, so use `--address <device IP> --devices <id>`; pick `--client-device-id` if 4194300 collides.
 - **Offline**: when nothing can run on site, export EDE from the customer's tool and use the EDE import.
+- **Recording values for replay**: `sme-bacnet-sim record` polls present-values (RPM with ReadProperty fallback) into a
+  CSV for the `replay` behavior, and with `--trend-log` reads Trend Log buffers (ReadRange). Read-only like clone;
+  stop with `--duration` / `--count` / Ctrl-C, `--resume` appends. See `docs/en/cloning.md`.
+
+  ```sh
+  sme-bacnet-sim record -c site.yaml --address 192.168.1.50 --interval 60 --duration 8h -o data/site.csv
+  ```
 
 ### Copy / paste and the property grid
 

@@ -72,9 +72,11 @@ class ReadOnlyApplication(Application):
     link-layer plumbing, not a BACnet service, and it never carries anything but the allowed APDUs.
     """
 
+    allowed: Tuple[type, ...] = ALLOWED_REQUESTS  # record --trend-log adds ReadRange (also read-only)
+
     def request(self, apdu):  # every client service of bacpypes3 goes through here
-        if not isinstance(apdu, ALLOWED_REQUESTS):
-            raise ReadOnlyViolation(f"clone is read-only: refusing to send {type(apdu).__name__}")
+        if not isinstance(apdu, self.allowed):
+            raise ReadOnlyViolation(f"read-only client: refusing to send {type(apdu).__name__}")
         return super().request(apdu)
 
     async def indication(self, apdu) -> None:
@@ -149,8 +151,10 @@ def jsonable(v: Any) -> Any:
 class ReadOnlyClient:
     """Paced, logged, retried Who-Is / ReadProperty / ReadPropertyMultiple on a :class:`ReadOnlyApplication`."""
 
-    def __init__(self, app: ReadOnlyApplication, rate: float, timeout: float, retries: int, log) -> None:
+    def __init__(self, app: ReadOnlyApplication, rate: float, timeout: float, retries: int, log,
+                 quiet: bool = False) -> None:
         self.app, self.interval, self.timeout, self.retries, self.log = app, 1.0 / rate, timeout, retries, log
+        self.quiet = quiet  # record: log errors only, not every value read
         self._next = 0.0
         self.services: List[str] = []  # names of every service sent (tests assert on it)
 
@@ -191,7 +195,32 @@ class ReadOnlyClient:
     async def read(self, addr: Address, oid: ObjectIdentifier, prop: str, index: Optional[int] = None) -> Any:
         kw = dict(device_address=str(addr), object=str(oid), property=prop, index=index)
         v = await self._call("read-property", lambda: self.app.read_property(addr, oid, prop, index), **kw)
-        self.log(kind="read-property", value=jsonable(v), **kw)
+        if not self.quiet:
+            self.log(kind="read-property", value=jsonable(v), **kw)
+        return v
+
+    async def read_many(self, addr: Address, oids: List[ObjectIdentifier], prop: str) -> Dict[str, Any]:
+        """One property of several objects in one ReadPropertyMultiple: {str(oid): value or ErrorType}."""
+        kw = dict(device_address=str(addr), objects=[str(o) for o in oids], property=prop)
+        res = await self._call("read-property-multiple",
+                               lambda: self.app.read_property_multiple(addr, [(o, [prop]) for o in oids]), **kw)
+        out: Dict[str, Any] = {}
+        for oid, _pid, _idx, v in res:
+            out[str(oid)] = v
+            if isinstance(v, ErrorType):
+                self.log(kind="read-property-multiple", object=str(oid), property=prop,
+                         error=f"{v.errorClass}: {v.errorCode}")
+        if not self.quiet:
+            self.log(kind="read-property-multiple", values={k: jsonable(v) for k, v in out.items()
+                                                             if not isinstance(v, ErrorType)}, **kw)
+        return out
+
+    async def read_range(self, addr: Address, oid: ObjectIdentifier, first: int, count: int) -> Any:
+        """ReadRange by position on log-buffer (records first .. first+count-1)."""
+        kw = dict(device_address=str(addr), object=str(oid), property="log-buffer", first=first, count=count)
+        v = await self._call("read-range", lambda: self.app.read_range(addr, oid, "log-buffer", None,
+                                                                       ("p", first, None, None, count)), **kw)
+        self.log(kind="read-range", records=len(v or []), **kw)
         return v
 
     async def read_multiple(self, addr: Address, oid: ObjectIdentifier, props: List[str]) -> Dict[str, Any]:
@@ -678,11 +707,25 @@ def build_parser() -> argparse.ArgumentParser:
         prog="sme-bacnet-sim clone",
         description="Read real BACnet devices (Who-Is / ReadProperty / ReadPropertyMultiple only) "
                     "and write a simulator config.")
+    add_link_args(ap, "clone")
+    ap.add_argument("--object-list-file", metavar="JSON",
+                    help='object table for devices whose object-list cannot be read: [{"deviceID": 1011, '
+                         '"objectList": [{"objectType": "analogInput", "objectInstance": 1}, ...]}, ...]')
+    ap.add_argument("--no-rpm", action="store_true", help="never use ReadPropertyMultiple")
+    ap.add_argument("--keep-ids", action=argparse.BooleanOptionalAction, default=True,
+                    help="keep the device instances (default); --no-keep-ids renumbers from 1001")
+    ap.add_argument("--resume", action="store_true", help="keep the devices already in the output file, skip them")
+    ap.add_argument("-o", "--output", required=True, help="output YAML file")
+    return ap
+
+
+def add_link_args(ap: argparse.ArgumentParser, verb: str) -> None:
+    """Target and client options shared by ``clone`` and ``record``."""
     ap.add_argument("--who-is", metavar="LOW-HIGH", help="device instance range for Who-Is (e.g. 1000-1099)")
     ap.add_argument("--address", metavar="IP[:PORT]",
                     help="unicast Who-Is to this device; with --network: the BACnet router to that network")
     ap.add_argument("--network", type=int, metavar="N", help="remote network number (Who-Is to N:*)")
-    ap.add_argument("--devices", metavar="ID,...", help="only clone these device instances")
+    ap.add_argument("--devices", metavar="ID,...", help=f"only {verb} these device instances")
     ap.add_argument("--ip", help='local address with prefix, e.g. "192.168.1.10/24" (default: auto)')
     ap.add_argument("--port", type=int, default=47808, help="local BACnet/IP UDP port (default 47808)")
     ap.add_argument("--foreign-bbmd", metavar="HOST[:PORT]",
@@ -694,16 +737,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--timeout", type=float, default=3.0, help="seconds per request / Who-Is wait (default 3)")
     ap.add_argument("--retries", type=int, default=2, help="retries per request (default 2)")
     ap.add_argument("--client-device-id", type=int, default=4194300,
-                    help="device instance of the clone client itself (default 4194300)")
-    ap.add_argument("--object-list-file", metavar="JSON",
-                    help='object table for devices whose object-list cannot be read: [{"deviceID": 1011, '
-                         '"objectList": [{"objectType": "analogInput", "objectInstance": 1}, ...]}, ...]')
-    ap.add_argument("--no-rpm", action="store_true", help="never use ReadPropertyMultiple")
-    ap.add_argument("--keep-ids", action=argparse.BooleanOptionalAction, default=True,
-                    help="keep the device instances (default); --no-keep-ids renumbers from 1001")
-    ap.add_argument("--resume", action="store_true", help="keep the devices already in the output file, skip them")
-    ap.add_argument("-o", "--output", required=True, help="output YAML file")
-    return ap
+                    help=f"device instance of the {verb} client itself (default 4194300)")
 
 
 def route_ip(host: str) -> Optional[str]:
@@ -759,8 +793,6 @@ def write_output(path: Path, devices: List[Dict[str, Any]], source: str, n_warn:
 
 async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
     """Run a clone; returns {"devices", "warnings", "services"}. The YAML is written after every device."""
-    from .engine import detect_ip
-
     def say(msg: str) -> None:
         (progress or (lambda m: print(m, file=sys.stderr, flush=True)))(msg)
 
@@ -794,70 +826,11 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
         log(kind="warning", message=msg)
         say(f"warning: {msg}")
 
-    target = getattr(args, "foreign_bbmd", None) or args.address
-    ip = args.ip or (route_ip(parse_host_port(target).split(":")[0]) if target else None) or detect_ip()
-    if not args.ip and target and ip.split("/")[0] != detect_ip().split("/")[0]:
-        say(f"using local address {ip.split('/')[0]} (the route to {target} leaves through that interface; "
-            f"override with --ip)")
-    if "/" not in ip:
-        from .engine import with_prefix
-        ip = with_prefix(ip)
-    check_port(ip, args.port)
-    dev_obj = DeviceObject(objectIdentifier=("device", args.client_device_id), objectName="sme-bacnet-sim-clone",
-                           vendorIdentifier=999, maxApduLengthAccepted=1476, segmentationSupported="segmented-both",
-                           apduTimeout=int(args.timeout * 1000), numberOfApduRetries=args.retries)
-    port_kw: Dict[str, Any] = {}
-    bbmd = getattr(args, "foreign_bbmd", None)
-    if bbmd:
-        bbmd = parse_host_port(bbmd)
-        if not 30 <= args.foreign_ttl <= 65535:
-            raise ValueError("--foreign-ttl must be 30..65535 seconds")
-        port_kw = dict(bacnetIPMode="foreign", fdBBMDAddress=HostNPort(bbmd), fdSubscriptionLifetime=args.foreign_ttl)
-    app = ReadOnlyApplication.from_object_list([
-        dev_obj, NetworkPortObject(f"{ip}:{args.port}", objectIdentifier=("network-port", 1), objectName="ip",
-                                   **port_kw)])
-    client = ReadOnlyClient(app, args.rate, args.timeout, args.retries, log)
+    link = open_link(args, log, say)
+    client = link.client
     result = {"devices": devices, "warnings": warnings, "services": client.services}
-    fd_link = next((ll for ll in app.link_layers.values() if isinstance(ll, BIPForeign)), None) if bbmd else None
     try:
-        if fd_link is not None:
-            await register_foreign(fd_link, bbmd, args.foreign_ttl, max(args.timeout, 5.0), log, say)
-        if args.network is not None and args.address:
-            router = Address(parse_host_port(args.address))
-            await app.nsap.update_router_references(None, router, [args.network])  # local table only
-            dest = Address(f"{args.network}:*")
-        elif args.network is not None:
-            dest = Address(f"{args.network}:*")
-        elif args.address:
-            dest = Address(parse_host_port(args.address))
-        else:
-            dest = LocalBroadcast()
-        found: Dict[int, Address] = {}
-        direct = bool(args.address) and args.network is None
-        if direct and wanted:  # known instances at a known address: no Who-Is at all
-            found = {d: dest for d in wanted}
-        else:
-            say(f"Who-Is {low if low is not None else ''}-{high if high is not None else ''} to {dest}")
-            for i in await client.who_is(low, high, dest):
-                found.setdefault(int(i.iAmDeviceIdentifier[1]), i.pduSource)
-        if not found and direct:  # no I-Am (e.g. broadcast to 47808 while we use another port)
-            try:
-                oid = await client.read(dest, ObjectIdentifier(("device", 4194303)), "object-identifier")
-                found = {int(oid[1]): dest}
-                say(f"device {int(oid[1])} found at {dest} by reading device,4194303")
-            except (ErrorRejectAbortNack, asyncio.TimeoutError) as e:
-                warn(f"{dest}: no I-Am and device,4194303 not readable ({e or type(e).__name__}); "
-                     f"give the instance with --devices")
-        if not found and not direct:
-            hint = (f" The I-Am answers may go to port 47808 while this client listens on {args.port}:"
-                    if args.port != 47808 else "")
-            warn(f"no device answered Who-Is.{hint} try --address <device IP> (unicast, with --devices ID), "
-                 f"or temporarily stop the program that holds port 47808")
-        if wanted is not None:
-            for d in sorted(wanted - set(found)):
-                warn(f"device {d} did not answer Who-Is")
-            found = {k: v for k, v in found.items() if k in wanted}
-        say(f"{len(found)} device(s): {', '.join(map(str, sorted(found))) or '-'}")
+        found = await discover(args, link, wanted, low, high, warn, say)
         source = ", ".join(f"{k}={getattr(args, k, None)}"
                            for k in ("who_is", "address", "network", "devices", "foreign_bbmd")
                            if getattr(args, k, None) is not None)
@@ -883,13 +856,98 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
         if not found:
             write_output(out, devices, source, len(warnings))
     finally:
-        if fd_link is not None and fd_link.bbmdRegistrationStatus == 0:
-            fd_link.unregister()  # Register-Foreign-Device with TTL 0
-            log(kind="foreign", bbmd=bbmd, status="unregistered")
-            await asyncio.sleep(0.2)  # let the datagram leave before the socket closes
-        app.close()
+        await close_link(link, log)
         logf.close()
     return result
+
+
+def open_link(args: argparse.Namespace, log, say, allowed: Tuple[type, ...] = ALLOWED_REQUESTS,
+              quiet: bool = False) -> SimpleNamespace:
+    """Bind the read-only client application (local address, optional foreign-device registration pending)."""
+    from .engine import detect_ip, with_prefix
+
+    if args.rate <= 0:
+        raise ValueError("--rate must be positive")
+    target = getattr(args, "foreign_bbmd", None) or args.address
+    ip = args.ip or (route_ip(parse_host_port(target).split(":")[0]) if target else None) or detect_ip()
+    if not args.ip and target and ip.split("/")[0] != detect_ip().split("/")[0]:
+        say(f"using local address {ip.split('/')[0]} (the route to {target} leaves through that interface; "
+            f"override with --ip)")
+    if "/" not in ip:
+        ip = with_prefix(ip)
+    check_port(ip, args.port)
+    dev_obj = DeviceObject(objectIdentifier=("device", args.client_device_id), objectName="sme-bacnet-sim-client",
+                           vendorIdentifier=999, maxApduLengthAccepted=1476, segmentationSupported="segmented-both",
+                           apduTimeout=int(args.timeout * 1000), numberOfApduRetries=args.retries)
+    port_kw: Dict[str, Any] = {}
+    bbmd = getattr(args, "foreign_bbmd", None)
+    if bbmd:
+        bbmd = parse_host_port(bbmd)
+        if not 30 <= args.foreign_ttl <= 65535:
+            raise ValueError("--foreign-ttl must be 30..65535 seconds")
+        port_kw = dict(bacnetIPMode="foreign", fdBBMDAddress=HostNPort(bbmd), fdSubscriptionLifetime=args.foreign_ttl)
+    app = ReadOnlyApplication.from_object_list([
+        dev_obj, NetworkPortObject(f"{ip}:{args.port}", objectIdentifier=("network-port", 1), objectName="ip",
+                                   **port_kw)])
+    app.allowed = allowed
+    client = ReadOnlyClient(app, args.rate, args.timeout, args.retries, log, quiet=quiet)
+    fd_link = next((ll for ll in app.link_layers.values() if isinstance(ll, BIPForeign)), None) if bbmd else None
+    return SimpleNamespace(app=app, client=client, fd_link=fd_link, bbmd=bbmd)
+
+
+async def close_link(link: SimpleNamespace, log) -> None:
+    try:
+        if link.fd_link is not None and link.fd_link.bbmdRegistrationStatus == 0:
+            link.fd_link.unregister()  # Register-Foreign-Device with TTL 0
+            log(kind="foreign", bbmd=link.bbmd, status="unregistered")
+            await asyncio.sleep(0.2)  # let the datagram leave before the socket closes
+    finally:
+        link.app.close()
+
+
+async def discover(args: argparse.Namespace, link: SimpleNamespace, wanted: Optional[set], low: Optional[int],
+                   high: Optional[int], warn, say) -> Dict[int, Address]:
+    """Register with the BBMD (if any), then find the target devices: {device instance: address}."""
+    client, app = link.client, link.app
+    if link.fd_link is not None:
+        await register_foreign(link.fd_link, link.bbmd, args.foreign_ttl, max(args.timeout, 5.0), client.log, say)
+    if args.network is not None and args.address:
+        router = Address(parse_host_port(args.address))
+        await app.nsap.update_router_references(None, router, [args.network])  # local table only
+        dest = Address(f"{args.network}:*")
+    elif args.network is not None:
+        dest = Address(f"{args.network}:*")
+    elif args.address:
+        dest = Address(parse_host_port(args.address))
+    else:
+        dest = LocalBroadcast()
+    found: Dict[int, Address] = {}
+    direct = bool(args.address) and args.network is None
+    if direct and wanted:  # known instances at a known address: no Who-Is at all
+        found = {d: dest for d in wanted}
+    else:
+        say(f"Who-Is {low if low is not None else ''}-{high if high is not None else ''} to {dest}")
+        for i in await client.who_is(low, high, dest):
+            found.setdefault(int(i.iAmDeviceIdentifier[1]), i.pduSource)
+    if not found and direct:  # no I-Am (e.g. broadcast to 47808 while we use another port)
+        try:
+            oid = await client.read(dest, ObjectIdentifier(("device", 4194303)), "object-identifier")
+            found = {int(oid[1]): dest}
+            say(f"device {int(oid[1])} found at {dest} by reading device,4194303")
+        except (ErrorRejectAbortNack, asyncio.TimeoutError) as e:
+            warn(f"{dest}: no I-Am and device,4194303 not readable ({e or type(e).__name__}); "
+                 f"give the instance with --devices")
+    if not found and not direct:
+        hint = (f" The I-Am answers may go to port 47808 while this client listens on {args.port}:"
+                if args.port != 47808 else "")
+        warn(f"no device answered Who-Is.{hint} try --address <device IP> (unicast, with --devices ID), "
+             f"or temporarily stop the program that holds port 47808")
+    if wanted is not None:
+        for d in sorted(wanted - set(found)):
+            warn(f"device {d} did not answer Who-Is")
+        found = {k: v for k, v in found.items() if k in wanted}
+    say(f"{len(found)} device(s): {', '.join(map(str, sorted(found))) or '-'}")
+    return found
 
 
 async def register_foreign(link: BIPForeign, bbmd: str, ttl: int, wait: float, log, say) -> None:
