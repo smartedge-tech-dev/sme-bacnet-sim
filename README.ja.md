@@ -298,7 +298,7 @@ Schedule の `present-value` が設定され、その値が各対象に
 対象のデバイスの ReinitializeDevice は、スケジュールされた値を再コマンドします。COV サブスクリプションは維持されます。`weekly-schedule`、`exception-schedule`、
 `schedule-default` は BACnet 経由で書き込み可能で、次の tick で反映されます（型が誤った値は
 `reliability` を `configuration-error` にします）。例外エントリには日付、日付範囲、weekNDay、
-Calendar 参照を使用できます。Calendar の `date-list` も書き込み可能です。`list-of-object-property-references` を書き込むと対象が変わります（このデバイスまたは他のシミュレートされたデバイスにある Schedule と同種の出力 / 値オブジェクトの present-value、またはシミュレータ外のデバイス。それ以外は `value-out-of-range`）。どちらも設定に保持されます（Save / Export）。Schedule 自身の
+Calendar 参照を使用できます。書き込まれた内容は設定の `weekly` / `exceptions` / `default` として保持されます（Save / Export。binary の値は 0 / 1、変更されたキーだけを書き換え、テンプレートの Schedule は上書きエントリとして保持）。設定で表せない内容（型の誤り、このデバイスの Calendar ではない Calendar 参照、対象が受け付けない値）は保持されず、設定には最後の有効な内容が残ります。`exception-schedule` は配列なので、Add/RemoveListElement は `property-is-not-a-list` を返します。Calendar の `date-list` も書き込み可能です。`list-of-object-property-references` を書き込むと対象が変わります（このデバイスまたは他のシミュレートされたデバイスにある Schedule と同種の出力 / 値オブジェクトの present-value、またはシミュレータ外のデバイス。それ以外は `value-out-of-range`）。どちらも設定に保持されます（Save / Export）。Schedule 自身の
 `present-value` へのクライアント書き込み（Schedule のデータ型であること。そうでなければ `invalid-data-type`）は、すべての対象へ
 `priority_for_writing` で転送され、次のスケジュール時刻エントリまで保持されます。`out-of-service` の設定有無にかかわらず受け付けられます。
 

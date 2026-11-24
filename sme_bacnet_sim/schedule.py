@@ -30,7 +30,8 @@ but never written (no network writes).
 Client writes to Weekly_Schedule / Exception_Schedule / Schedule_Default are
 accepted (bacpypes3 local objects are writable) and mark the schedule dirty; it
 is re-evaluated on the next tick.  Values of the wrong datatype put the object
-into Reliability = configuration-error and evaluation stops until fixed.
+into Reliability = configuration-error and evaluation stops until fixed.  The
+engine keeps valid written content in the config (``schedule_to_cfg``).
 
 Outside the Effective_Period the schedule keeps its last Present_Value and
 writes nothing.
@@ -124,6 +125,38 @@ def entry_to_cfg(ce: CalendarEntry) -> Any:
     if ce.dateRange is not None:
         return {"from": fmt_date(ce.dateRange.startDate), "to": fmt_date(ce.dateRange.endDate)}
     return {"weeknday": ["*" if x == WILDCARD else x for x in tuple(ce.weeknday)]}
+
+
+def _times_to_cfg(time_values: Any) -> List[Dict[str, Any]]:
+    return [{"time": fmt_hms(tv.time), "value": to_py(tv.value)} for tv in time_values or []]
+
+
+def schedule_to_cfg(obj: Any, calendars: List["Calendar"]) -> Dict[str, Any]:
+    """Weekly_Schedule / Exception_Schedule / Schedule_Default -> config ``weekly`` / ``exceptions`` / ``default``
+    (binary values as 0 / 1, NULL as None); raises ValueError for a calendar reference that is not a calendar of
+    this device (the config names calendars)."""
+    days = [_times_to_cfg(ds.daySchedule) for ds in obj.weeklySchedule or []]
+    days += [[] for _ in range(len(WEEKDAYS) - len(days))]
+    if all(d == days[0] for d in days):
+        weekly: Dict[str, Any] = {"daily": days[0]}
+    elif all(d == days[0] for d in days[:5]) and days[5] == days[6]:
+        weekly = {"weekdays": days[0], "weekend": days[5]}
+    else:
+        weekly = dict(zip(WEEKDAYS, days))
+    exceptions = []
+    for i, se in enumerate(obj.exceptionSchedule or []):
+        per = se.period
+        if per.calendarEntry is not None:
+            ex: Dict[str, Any] = {"date": entry_to_cfg(per.calendarEntry)}
+        else:
+            ref = per.calendarReference
+            cal = next((c for c in calendars if str(ObjectType(ref[0])) == CALENDAR and c.cfg.instance == ref[1]), None)
+            if cal is None:
+                raise ValueError(f"exception-schedule[{i + 1}]: {ref} is not a calendar of this device")
+            ex = {"calendar": cal.cfg.name}
+        ex.update(priority=int(se.eventPriority), times=_times_to_cfg(se.listOfTimeValues))
+        exceptions.append(ex)
+    return {"weekly": weekly, "exceptions": exceptions, "default": to_py(obj.scheduleDefault)}
 
 
 # --------------------------------------------------------------------------- BACnet objects
@@ -279,6 +312,7 @@ class Schedule:
     current: Any = _UNSET  # Python value of Present_Value (scheduled or written by a client)
     scheduled: Any = _UNSET  # Python value last computed by the schedule
     next: Optional[Tuple[float, Any]] = None  # (sim epoch s, value) of the next change
+    saved: Dict[str, Any] = field(default_factory=dict)  # schedule_to_cfg() of the content the config holds
     _next_key: Any = field(default=None, repr=False)
     _last_ts: Optional[float] = field(default=None, repr=False)  # sim epoch of the previous evaluation
 
@@ -588,4 +622,5 @@ def build_schedule(dev: Any, oc: Any, points: List[Any], calendars: List[Calenda
     obj = SimScheduleObject(DATATYPES[kind], **kw)
     if obj.reliability != Reliability.noFaultDetected:
         raise ValueError(f"{where}: inconsistent schedule values")
-    return Schedule(dev.device_id, oc, obj, targets, kind, priority, labels, external)
+    return Schedule(dev.device_id, oc, obj, targets, kind, priority, labels, external,
+                    saved=schedule_to_cfg(obj, calendars))

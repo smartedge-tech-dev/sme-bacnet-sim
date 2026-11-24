@@ -66,6 +66,7 @@ from .eventenroll import EnrollmentAlarm, EventEnrollment, check_target
 from .devmgmt import CreateError, PropertySubscription, cov_class, initial_values, sync_time
 from .schedule import (
     _UNSET as UNSET_VALUE, Calendar, Schedule, build_calendar, build_schedule, entry_to_cfg, refs_to_targets,
+    schedule_to_cfg,
     resolve_targets, _value_kind,
 )
 from .control import CONTROL_CLASSES, acc_max, build_controls, control_kwargs
@@ -1398,9 +1399,10 @@ class Engine:
         for c in rt.calendars:  # Date_List written by a client: kept in the config
             if (CALENDAR, c.cfg.instance) in written:
                 self._sync_calendar(rt, c)
-        for sc in rt.schedules:  # List_Of_Object_Property_References written by a client: new targets + config
+        for sc in rt.schedules:  # List_Of_Object_Property_References / schedule content written by a client
             if (SCHEDULE, sc.cfg.instance) in written:
                 self._sync_schedule_targets(rt, sc)
+                self._sync_schedule_content(rt, sc)
         for z in rt.lifesafety:  # Zone_Members written by a client: kept in the config (member names)
             if z.zone and (z.cfg.type, z.cfg.instance) in written:
                 names = member_names(z, rt.lifesafety)
@@ -1487,6 +1489,9 @@ class Engine:
             setattr(cfg, k, v)
         o = next((o for o in rt.cfg.objects if o.name == cfg.name), None)
         if o is None:  # template object: add an override entry (merged by name, see expand_device)
+            if cfg.type == SCHEDULE:  # an override entry must be a valid schedule on its own
+                fields = {**{k: getattr(cfg, k) for k in ("weekly", "exceptions") if getattr(cfg, k) is not None},
+                          **fields}
             rt.cfg.objects.append(ObjectConfig(type=cfg.type, name=cfg.name, **fields))
         elif o is not cfg:
             for k, v in fields.items():
@@ -1546,6 +1551,28 @@ class Engine:
         sc.targets, sc.labels, sc.external = targets, labels, external
         self._persist(rt, sc.cfg, targets=entries)
         self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name}: targets = {', '.join(labels) or 'none'}")
+
+    def _sync_schedule_content(self, rt: DeviceRuntime, sc: Schedule) -> None:
+        """Weekly_Schedule / Exception_Schedule / Schedule_Default written by a client -> config ``weekly`` /
+        ``exceptions`` / ``default`` (only the changed ones).  The schedule already runs on the new content; content
+        the config cannot reproduce (configuration-error, calendar of another device, value the targets do not
+        accept) is not kept and the config holds the last valid content."""
+        where = f"{rt.cfg.name}/{sc.cfg.name}"
+        try:
+            new = schedule_to_cfg(sc.obj, rt.calendars)
+            changed = {k: v for k, v in new.items() if v != sc.saved.get(k)}
+            if not changed:
+                return
+            if str(sc.obj.reliability) != "no-fault-detected":
+                raise ValueError(f"reliability {sc.obj.reliability}")
+            oc = ObjectConfig.model_validate({**sc.cfg.model_dump(exclude_none=True), **new})
+            build_schedule(rt.cfg, oc, rt.points, rt.calendars, self.devices.values())
+        except Exception as e:
+            self.log_event("error", f"{where}: schedule content not kept in the config: {e}")
+            return
+        sc.saved = new
+        self._persist(rt, sc.cfg, **changed)
+        self.log_event("schedule", f"{where}: {', '.join(changed)} updated by BACnet write")
 
     # ---- life safety (see sme_bacnet_sim/lifesafety.py)
 
