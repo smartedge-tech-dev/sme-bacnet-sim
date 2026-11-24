@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-24
+
 ### Added
 - `sme-bacnet-sim record` (#4): poll present-values into a replay CSV (RPM with RP fallback, `--interval` / `--duration` / `--count`, `--resume`) and `--trend-log` (ReadRange of Trend Log buffers); read-only like clone. See `docs/en/cloning.md`.
 
@@ -80,7 +82,8 @@ First public release.
   property table, copy and paste of devices and objects; English, Japanese and Simplified Chinese.
 - Distribution as a Windows exe and a Docker image (`ghcr.io/smartedge-tech-dev/sme-bacnet-sim`).
 
-[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.0...v0.1.1
