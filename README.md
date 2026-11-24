@@ -613,6 +613,39 @@ most BACnet tools and integrators exchange.
   created. Notification classes are imported with default priorities and no recipients (EDE has no columns for
   them). Other alarm settings (deadband, time delay, binary / multi-state alarm values) are not carried by EDE.
 
+### Cloning real devices
+
+`sme-bacnet-sim clone` reads real BACnet devices (read-only) and writes a simulator config, so later tests run
+offline. Full reference: `docs/en/cloning.md`.
+
+- **Get the customer's permission first**; prefer non-operating hours. Start with a small `--who-is` range and keep
+  the default `--rate` (5 requests/s): MS/TP trunks and low-end controllers are easily loaded.
+- **Read-only guarantee**: the clone client can only send Who-Is, ReadProperty and ReadPropertyMultiple (any other
+  APDU is refused in code, a test asserts it) and never answers requests from other devices.
+- **On a gateway (e.g. Moxa, ARM) use Docker** — `--network host` is required for Who-Is / I-Am:
+
+  ```sh
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # offline; or: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  ```
+
+  With Python 3.10+: `pip install .` (venv or `pip install --user .`) from a checkout. The PyInstaller executables
+  are x86-64 only and do not cover ARM.
+- **Targets**: `--who-is LOW-HIGH` (local broadcast), `--address IP[:PORT]` (unicast; with `--devices ID` no Who-Is
+  at all), `--network N` (with `--address`: the router to network N), `--devices ID,...`. One is required.
+- **Other options**: `--ip`, `--port` (default 47808), `--client-device-id` (default 4194300), `--rate`,
+  `--timeout`, `--retries`, `--no-rpm`, `--object-list-file` (object table for devices whose object-list cannot be
+  read), `--no-keep-ids`, `--resume`, `-o OUT.yaml`.
+- Object lists are read by array index (no segmentation needed); RPM falls back to ReadProperty; requests stay
+  within the device's max-apdu. The YAML is rewritten after each device (Ctrl+C keeps what was read) and
+  `OUT.yaml.log.jsonl` logs every request / answer / error / warning.
+- Cloned: device info, all supported object types with names, units, state texts, COV increments, commandable,
+  alarm parameters, notification classes, schedules, calendars, trend logs and the other supported objects'
+  settings. Not cloned: file content, address recipients, references to other devices (warnings in the log).
+- **Coexisting with another BACnet client** on the gateway (e.g. BAC0 on 47808): use `--port 47809`; I-Am answers
+  may go to 47808, so use `--address <device IP> --devices <id>`; pick `--client-device-id` if 4194300 collides.
+- **Offline**: when nothing can run on site, export EDE from the customer's tool and use the EDE import.
+
 ### Copy / paste and the property grid
 
 - **Devices**: *Copy* in the device header (or right-click a device in the list, or Ctrl+C with no point selected),

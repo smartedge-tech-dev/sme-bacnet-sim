@@ -444,6 +444,27 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 - **Accumulator / Pulse Converter / Loop**（对象类型 23 / 24 / 12）：见上文“对象”。
 - **hi-limit / low-limit** 映射到模拟量对象的 `alarm.high_limit` / `alarm.low_limit`。导入时，报警使用设备的第一个 Notification Class；若文件中没有，则创建 `NC-1`（instance 1，无接收方）。Notification Class 以默认优先级且无接收方的方式导入（EDE 中没有对应的列）。其他报警设置（deadband、time delay、二进制 / 多状态报警值）不会被 EDE 携带。
 
+### 克隆真实设备
+
+`sme-bacnet-sim clone` 以只读方式读取真实 BACnet 设备并写出模拟器配置，之后的测试即可离线进行。完整说明：`docs/zh/cloning.md`。
+
+- **请先取得客户许可**，建议在非运营时间进行。先用小范围 `--who-is`，`--rate` 保持默认（每秒 5 个请求）：MS/TP 和低端控制器容易被压高负载。
+- **只读保证**：克隆客户端只能发送 Who-Is、ReadProperty 和 ReadPropertyMultiple（其他 APDU 在代码中被拒绝，并有测试断言），也从不应答其他设备的请求。
+- **在网关（如 Moxa，ARM）上用 Docker**，Who-Is / I-Am 必须使用 `--network host`：
+
+  ```sh
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # 离线；或：docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  ```
+
+  有 Python 3.10+ 时，从源码检出 `pip install .`（venv 或 `pip install --user .`）。PyInstaller 可执行文件只有 x86-64，不覆盖 ARM。
+- **目标**：`--who-is LOW-HIGH`（本地广播）、`--address IP[:PORT]`（单播；配合 `--devices ID` 完全不发 Who-Is）、`--network N`（配合 `--address` 时为通往网络 N 的路由器）、`--devices ID,...`，至少给一个。
+- **其他选项**：`--ip`、`--port`（默认 47808）、`--client-device-id`（默认 4194300）、`--rate`、`--timeout`、`--retries`、`--no-rpm`、`--object-list-file`（读不出 object-list 的设备的对象表）、`--no-keep-ids`、`--resume`、`-o OUT.yaml`。
+- object-list 按数组索引读取（无需分段）；RPM 失败回退 ReadProperty；请求控制在设备的 max-apdu 以内。每读完一台设备重写 YAML（Ctrl+C 后已读部分保留），`OUT.yaml.log.jsonl` 记录每个请求 / 应答 / 错误 / 警告。
+- 克隆内容：设备信息，所有支持的对象类型的名称、单位、状态文本、COV 增量、commandable、报警参数，Notification Class、Schedule、Calendar、Trend Log 及其他支持对象的设置。不克隆：文件内容、按地址指定的接收方、指向其他设备的引用（日志中有警告）。
+- **与网关上已有 BACnet 客户端共存**（例如占用 47808 的 BAC0）：用 `--port 47809`；I-Am 可能发往 47808，所以用 `--address <设备IP> --devices <id>`；4194300 冲突时指定 `--client-device-id`。
+- **离线**：现场无法运行任何程序时，从客户工具导出 EDE，使用 EDE 导入。
+
 ### 复制 / 粘贴与属性面板
 
 - **设备**：在设备头部点「复制」（或在列表中右键点击设备、未选中点位时按 Ctrl+C），再点「粘贴」（头部按钮、

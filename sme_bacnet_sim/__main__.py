@@ -57,7 +57,11 @@ def apply_cli_overrides(cfg: SimConfig, args: argparse.Namespace) -> None:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="sme-bacnet-sim", description="BACnet/IP device simulator with a web UI")
+    rest = sys.argv[1:] if argv is None else list(argv)
+    if rest[:1] == ["clone"]:  # subcommand; without it the options below are unchanged
+        from .clone import main as clone_main
+        return clone_main(rest[1:])
+    ap =argparse.ArgumentParser(prog="sme-bacnet-sim", description="BACnet/IP device simulator with a web UI")
     ap.add_argument("-c", "--config", help="YAML/JSON config file (default: configs/demo-building.yaml if present)")
     ap.add_argument("--ip", help='BACnet bind address, e.g. "192.168.1.10/24" (overrides config)')
     ap.add_argument("--bacnet-port", type=int, help="BACnet/IP UDP port (overrides config, default 47808)")

@@ -601,6 +601,39 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
   作成されます。Notification Class はデフォルトの優先度・受信先なしでインポートされます（EDE にはそのための列がありません）。
   その他のアラーム設定（deadband、time delay、バイナリ / マルチステートのアラーム値）は EDE では引き継がれません。
 
+### 実機デバイスのクローン
+
+`sme-bacnet-sim clone` は実機の BACnet デバイスを（読み取り専用で）読み取り、シミュレータの設定を書き出します。以後のテストは
+オフラインで行えます。詳細: `docs/ja/cloning.md`。
+
+- **事前にお客様の許可を得てください**。非稼働時間帯を推奨します。まず狭い `--who-is` 範囲で試し、`--rate` は既定値
+  （5 要求/秒）のままにしてください。MS/TP やローエンドのコントローラは負荷がかかりやすいためです。
+- **読み取り専用の保証**: クローンのクライアントが送れるのは Who-Is、ReadProperty、ReadPropertyMultiple だけです
+  （それ以外の APDU はコードで拒否し、テストで確認）。他のデバイスからの要求には応答しません。
+- **ゲートウェイ（Moxa など ARM）では Docker を使います**。Who-Is / I-Am のため `--network host` が必須です:
+
+  ```sh
+  docker load -i sme-bacnet-sim-<ver>-linux-<arch>.tar      # オフライン。または: docker pull ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver>
+  docker run --rm --network host --user "$(id -u):$(id -g)" -v "$PWD":/out     ghcr.io/smartedge-tech-dev/sme-bacnet-sim:<ver> sme-bacnet-sim clone --who-is 1000-1010 -o /out/site.yaml
+  ```
+
+  Python 3.10 以上があれば、チェックアウトから `pip install .`（venv または `pip install --user .`）。PyInstaller 実行ファイルは
+  x86-64 のみで ARM には対応していません。
+- **対象**: `--who-is LOW-HIGH`（ローカルブロードキャスト）、`--address IP[:PORT]`（ユニキャスト。`--devices ID` と併用すると
+  Who-Is なし）、`--network N`（`--address` と併用でネットワーク N へのルータ）、`--devices ID,...`。いずれかが必須です。
+- **その他のオプション**: `--ip`、`--port`（既定 47808）、`--client-device-id`（既定 4194300）、`--rate`、`--timeout`、
+  `--retries`、`--no-rpm`、`--object-list-file`（object-list を読めないデバイスのオブジェクト表）、`--no-keep-ids`、
+  `--resume`、`-o OUT.yaml`。
+- object-list は配列インデックスで読み取ります（セグメンテーション不要）。RPM は ReadProperty にフォールバックし、要求は
+  デバイスの max-apdu に収まるようにします。YAML はデバイスごとに書き直され（Ctrl+C でも読み取り済みは残る）、
+  `OUT.yaml.log.jsonl` にすべての要求・応答・エラー・警告を記録します。
+- クローンされる内容: デバイス情報、対応する全オブジェクトタイプの名前・単位・ステートテキスト・COV 増分・commandable・
+  アラームパラメータ、Notification Class、Schedule、Calendar、Trend Log、その他対応オブジェクトの設定。クローンされないもの:
+  ファイルの内容、アドレス指定の受信者、他デバイスへの参照（ログに警告）。
+- **ゲートウェイ上の既存 BACnet クライアントとの共存**（例: 47808 の BAC0）: `--port 47809` を使います。I-Am は 47808 宛てに
+  なることがあるため `--address <デバイス IP> --devices <id>` を使い、4194300 が衝突する場合は `--client-device-id` を指定します。
+- **オフライン**: 現場で何も実行できない場合は、お客様のツールから EDE をエクスポートして EDE インポートを使います。
+
 ### コピー / 貼り付けとプロパティグリッド
 
 - **デバイス**: デバイスヘッダーの「コピー」（または一覧のデバイスを右クリック、ポイント未選択時の Ctrl+C）の後、
