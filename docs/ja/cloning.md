@@ -17,7 +17,8 @@ DeviceCommunicationControl、ReinitializeDevice、AtomicReadFile などは送信
 「実機」側が受信したのがこの 3 サービスだけであることを確認しています。
 
 それ以外の通信はネットワーク層のみです。`--network N` を `--address` なしで使うと、bacpypes3 がルータを探すために
-Who-Is-Router-To-Network を送ることがあります。
+Who-Is-Router-To-Network を送ることがあります。`--foreign-bbmd` を使うと、BVLL のリンク層が Register-Foreign-Device
+（終了時は TTL 0）を送り、ブロードキャストを Distribute-Broadcast-To-Network で包みます。中身は許可された APDU だけです。
 
 ## ゲートウェイ上での実行（Docker、主な方法）
 
@@ -70,7 +71,8 @@ sme-bacnet-sim clone [--who-is LOW-HIGH | --address IP[:PORT] | --network N] [--
 | `--address IP[:PORT]` | このデバイスへユニキャスト。`--devices` と併用すると Who-Is を一切送りません。併用しない場合はユニキャストの Who-Is、続いて `device,4194303`（ワイルドカードインスタンス）を読み取ります |
 | `--network N` | リモートネットワーク: `N:*` へ Who-Is。`--address` と併用するとそのアドレスはネットワーク N への BACnet ルータ |
 | `--devices ID,...` | これらのデバイスインスタンスのみ（`--who-is` なしの場合、Who-Is の範囲はその最小..最大） |
-| `--ip`, `--port` | クローンクライアントのローカルアドレスと UDP ポート（既定: 自動 / 47808） |
+| `--foreign-bbmd HOST[:PORT]`、`--foreign-ttl S` | 先にこの BBMD へフォーリンデバイスとして登録（サブネット越え、下記参照。TTL 既定 300 秒） |
+| `--ip`, `--port` | クローンクライアントのローカルアドレスと UDP ポート（既定: `--foreign-bbmd` / `--address` へ経路のあるインタフェース、なければ自動 / 47808） |
 | `--client-device-id` | クローンクライアント自身のデバイスインスタンス（既定 4194300） |
 | `--rate` | 1 秒あたりの最大要求数（既定 5） |
 | `--timeout`, `--retries` | 要求ごと（APDU タイムアウトと再送回数）。`--timeout` は Who-Is の待ち時間にも使われます |
@@ -91,6 +93,20 @@ sme-bacnet-sim clone [--who-is LOW-HIGH | --address IP[:PORT] | --network N] [--
   ReadProperty で読み取ります。デバイスにないプロパティはスキップします。
 - YAML はデバイスごとに書き直されます。Ctrl+C で中断しても読み取り済みのデバイスはファイルに残り、`--resume` で続行できます。
 - `<out>.log.jsonl` にすべての要求・応答・エラー・警告を記録します（1 行 1 JSON）。
+
+### サブネット越え: `--foreign-bbmd`
+
+Who-Is のブロードキャストと（ブロードキャストの）I-Am 応答は IP ルータを越えません。現地に BBMD（BACnet ルータや
+デバイスシミュレータ自身の「Operate as BBMD」など）があれば、フォーリンデバイスとして登録します:
+
+```bash
+sme-bacnet-sim clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302 -o site.yaml
+```
+
+BBMD がそのサブネットへ Who-Is を配信し、I-Am 応答をクローンクライアントへ転送します。ルータ配下の仮想ネットワーク上の
+デバイスも含まれます（`network:mac` で読み取ります）。`--ip` を省略すると BBMD へ経路のあるローカルアドレスにバインドします。
+VPN / オーバーレイ経路（Tailscale のサブネットルートなど）では重要で、LAN 側アドレスにバインドすると要求が有効な送信元を
+持たずに出て行き、何も返ってきません。BBMD が NAK または無応答ならエラーで終了し、終了時に登録を解除します（TTL 0）。
 
 ### オブジェクト表ファイル
 

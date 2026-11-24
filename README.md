@@ -638,6 +638,8 @@ offline. Full reference: `docs/en/cloning.md`.
   are x86-64 only and do not cover ARM.
 - **Targets**: `--who-is LOW-HIGH` (local broadcast), `--address IP[:PORT]` (unicast; with `--devices ID` no Who-Is
   at all), `--network N` (with `--address`: the router to network N), `--devices ID,...`. One is required.
+- **Across subnets**: `--foreign-bbmd HOST[:PORT]` (and `--foreign-ttl`) registers the client as a foreign device
+  with a BBMD so the broadcast I-Am answers reach it, e.g. `clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302`.
 - **Other options**: `--ip`, `--port` (default 47808), `--client-device-id` (default 4194300), `--rate`,
   `--timeout`, `--retries`, `--no-rpm`, `--object-list-file` (object table for devices whose object-list cannot be
   read), `--no-keep-ids`, `--resume`, `-o OUT.yaml`.

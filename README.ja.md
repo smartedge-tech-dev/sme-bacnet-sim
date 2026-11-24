@@ -626,6 +626,8 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
   x86-64 のみで ARM には対応していません。
 - **対象**: `--who-is LOW-HIGH`（ローカルブロードキャスト）、`--address IP[:PORT]`（ユニキャスト。`--devices ID` と併用すると
   Who-Is なし）、`--network N`（`--address` と併用でネットワーク N へのルータ）、`--devices ID,...`。いずれかが必須です。
+- **サブネット越え**: `--foreign-bbmd HOST[:PORT]`（と `--foreign-ttl`）で BBMD にフォーリンデバイスとして登録し、ブロードキャストの
+  I-Am 応答を受け取ります。例: `clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302`。
 - **その他のオプション**: `--ip`、`--port`（既定 47808）、`--client-device-id`（既定 4194300）、`--rate`、`--timeout`、
   `--retries`、`--no-rpm`、`--object-list-file`（object-list を読めないデバイスのオブジェクト表）、`--no-keep-ids`、
   `--resume`、`-o OUT.yaml`。

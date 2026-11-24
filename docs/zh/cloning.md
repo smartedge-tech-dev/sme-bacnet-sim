@@ -13,7 +13,8 @@
 AtomicReadFile 等。它也是被动的：从不应答其他设备的请求（不发 I-Am，也不应答 ReadProperty）。测试会克隆一个模拟器实例，
 并断言“真实”设备收到的只有这三种服务。
 
-此外只有网络层流量：使用 `--network N` 而不带 `--address` 时，bacpypes3 可能发送 Who-Is-Router-To-Network 来查找路由器。
+此外只有网络层流量：使用 `--network N` 而不带 `--address` 时，bacpypes3 可能发送 Who-Is-Router-To-Network 来查找路由器。使用 `--foreign-bbmd` 时，BVLL 链路层还会发送 Register-Foreign-Device（退出时 TTL 0），并把广播包装成
+Distribute-Broadcast-To-Network；其中只承载允许的 APDU。
 
 ## 在网关上运行（Docker，主要方式）
 
@@ -63,7 +64,8 @@ sme-bacnet-sim clone [--who-is LOW-HIGH | --address IP[:PORT] | --network N] [--
 | `--address IP[:PORT]` | 单播到该设备。与 `--devices` 同用时完全不发 Who-Is；不同用时先单播 Who-Is，再读取 `device,4194303`（通配 instance） |
 | `--network N` | 远程网络：向 `N:*` 发 Who-Is；与 `--address` 同用时该地址是通往网络 N 的 BACnet 路由器 |
 | `--devices ID,...` | 只克隆这些设备 instance（无 `--who-is` 时 Who-Is 范围取其最小..最大） |
-| `--ip`, `--port` | 克隆客户端的本地地址和 UDP 端口（默认自动 / 47808） |
+| `--foreign-bbmd HOST[:PORT]`、`--foreign-ttl S` | 先作为 foreign device 注册到该 BBMD（跨子网，见下文；TTL 默认 300 秒） |
+| `--ip`, `--port` | 克隆客户端的本地地址和 UDP 端口（默认：通往 `--foreign-bbmd` / `--address` 的那个接口，否则自动 / 47808） |
 | `--client-device-id` | 克隆客户端自身的设备 instance（默认 4194300） |
 | `--rate` | 每秒最大请求数（默认 5） |
 | `--timeout`, `--retries` | 每个请求的 APDU 超时与重试次数；`--timeout` 也是 Who-Is 的等待时间 |
@@ -82,6 +84,19 @@ sme-bacnet-sim clone [--who-is LOW-HIGH | --address IP[:PORT] | --network N] [--
   被 reject 或 abort 后，该设备其余部分改用 ReadProperty。设备没有的属性会被跳过。
 - 每读完一台设备就重写一次 YAML：Ctrl+C 中断后已读的设备都在文件里；用 `--resume` 继续。
 - `<out>.log.jsonl` 记录每个请求、应答、错误和警告（每行一个 JSON）。
+
+### 跨子网：`--foreign-bbmd`
+
+Who-Is 广播和（广播的）I-Am 应答不会穿过 IP 路由器。现场若有 BBMD（常见为 BACnet 路由器，或设备模拟器自身的
+“Operate as BBMD”），就作为 foreign device 注册上去：
+
+```bash
+sme-bacnet-sim clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302 -o site.yaml
+```
+
+BBMD 会把 Who-Is 分发到它的子网，并把 I-Am 应答转发给克隆客户端，包括路由器后面虚拟网络上的设备（随后按 `network:mac`
+读取）。不给 `--ip` 时，客户端绑定到通往 BBMD 的本地地址；这在 VPN / overlay 路由（如 Tailscale subnet route）下很关键：
+绑定在 LAN 地址上时请求没有可用的源地址发出，什么也收不到。BBMD 返回 NAK 或无应答时克隆报错退出；退出时注销登记（TTL 0）。
 
 ### 对象表文件
 

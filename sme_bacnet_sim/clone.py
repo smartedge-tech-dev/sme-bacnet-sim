@@ -6,6 +6,10 @@ ReadProperty answers). The object list is read element by element (array index 0
 without segmentation work; ReadPropertyMultiple is used per object and falls back to ReadProperty for the rest of
 the device on the first failure.
 
+Cross-subnet (``--foreign-bbmd``): the client registers as a foreign device with a BBMD so the broadcast I-Am
+answers are forwarded to it. Register-Foreign-Device / Distribute-Broadcast-To-Network are BVLL messages below the
+APDU layer; the read-only guard is unchanged (no write / subscribe / DCC APDU can be sent).
+
 Output: a SimConfig YAML (devices only; the network section is left at the simulator defaults, i.e. the devices
 are served on the virtual network behind the built-in router) and ``<out>.log.jsonl`` with one line per request /
 answer / error / warning. The YAML is rewritten after every device, so an interrupted run keeps what it has read.
@@ -28,7 +32,8 @@ import yaml
 from bacpypes3.apdu import (ErrorRejectAbortNack, IAmRequest, ReadPropertyMultipleRequest, ReadPropertyRequest,
                             WhoIsRequest)
 from bacpypes3.app import Application
-from bacpypes3.basetypes import ErrorType
+from bacpypes3.basetypes import ErrorType, HostNPort
+from bacpypes3.ipv4.service import BIPForeign
 from bacpypes3.local.device import DeviceObject
 from bacpypes3.local.networkport import NetworkPortObject
 from bacpypes3.pdu import Address, LocalBroadcast
@@ -60,7 +65,12 @@ class ObjectListError(RuntimeError):
 
 
 class ReadOnlyApplication(Application):
-    """bacpypes3 application that can only send Who-Is / ReadProperty / ReadPropertyMultiple."""
+    """bacpypes3 application that can only send Who-Is / ReadProperty / ReadPropertyMultiple.
+
+    The guard is on the APDU layer. With ``--foreign-bbmd`` the BVLL link layer additionally sends
+    Register-Foreign-Device (and TTL 0 on exit) and wraps broadcasts in Distribute-Broadcast-To-Network; that is
+    link-layer plumbing, not a BACnet service, and it never carries anything but the allowed APDUs.
+    """
 
     def request(self, apdu):  # every client service of bacpypes3 goes through here
         if not isinstance(apdu, ALLOWED_REQUESTS):
@@ -675,6 +685,11 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--devices", metavar="ID,...", help="only clone these device instances")
     ap.add_argument("--ip", help='local address with prefix, e.g. "192.168.1.10/24" (default: auto)')
     ap.add_argument("--port", type=int, default=47808, help="local BACnet/IP UDP port (default 47808)")
+    ap.add_argument("--foreign-bbmd", metavar="HOST[:PORT]",
+                    help="register as a foreign device with this BBMD first (cross-subnet: the BBMD forwards the "
+                         "broadcast I-Am answers to this client; IPv4, default port 47808)")
+    ap.add_argument("--foreign-ttl", type=int, default=300, metavar="SECONDS",
+                    help="foreign device Time-to-Live in seconds (default 300)")
     ap.add_argument("--rate", type=float, default=5.0, help="max requests per second (default 5)")
     ap.add_argument("--timeout", type=float, default=3.0, help="seconds per request / Who-Is wait (default 3)")
     ap.add_argument("--retries", type=int, default=2, help="retries per request (default 2)")
@@ -689,6 +704,19 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--resume", action="store_true", help="keep the devices already in the output file, skip them")
     ap.add_argument("-o", "--output", required=True, help="output YAML file")
     return ap
+
+
+def route_ip(host: str) -> Optional[str]:
+    """Local IPv4 address the OS uses to reach ``host`` (no packet is sent). Matters for VPN / overlay routes
+    (e.g. a Tailscale subnet route): bound to the LAN address, the requests would leave without a usable source."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect((host, 47808))
+        return s.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        s.close()
 
 
 def check_port(ip: str, port: int) -> None:
@@ -766,7 +794,11 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
         log(kind="warning", message=msg)
         say(f"warning: {msg}")
 
-    ip = args.ip or detect_ip()
+    target = getattr(args, "foreign_bbmd", None) or args.address
+    ip = args.ip or (route_ip(parse_host_port(target).split(":")[0]) if target else None) or detect_ip()
+    if not args.ip and target and ip.split("/")[0] != detect_ip().split("/")[0]:
+        say(f"using local address {ip.split('/')[0]} (the route to {target} leaves through that interface; "
+            f"override with --ip)")
     if "/" not in ip:
         from .engine import with_prefix
         ip = with_prefix(ip)
@@ -774,11 +806,22 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
     dev_obj = DeviceObject(objectIdentifier=("device", args.client_device_id), objectName="sme-bacnet-sim-clone",
                            vendorIdentifier=999, maxApduLengthAccepted=1476, segmentationSupported="segmented-both",
                            apduTimeout=int(args.timeout * 1000), numberOfApduRetries=args.retries)
+    port_kw: Dict[str, Any] = {}
+    bbmd = getattr(args, "foreign_bbmd", None)
+    if bbmd:
+        bbmd = parse_host_port(bbmd)
+        if not 30 <= args.foreign_ttl <= 65535:
+            raise ValueError("--foreign-ttl must be 30..65535 seconds")
+        port_kw = dict(bacnetIPMode="foreign", fdBBMDAddress=HostNPort(bbmd), fdSubscriptionLifetime=args.foreign_ttl)
     app = ReadOnlyApplication.from_object_list([
-        dev_obj, NetworkPortObject(f"{ip}:{args.port}", objectIdentifier=("network-port", 1), objectName="ip")])
+        dev_obj, NetworkPortObject(f"{ip}:{args.port}", objectIdentifier=("network-port", 1), objectName="ip",
+                                   **port_kw)])
     client = ReadOnlyClient(app, args.rate, args.timeout, args.retries, log)
     result = {"devices": devices, "warnings": warnings, "services": client.services}
+    fd_link = next((ll for ll in app.link_layers.values() if isinstance(ll, BIPForeign)), None) if bbmd else None
     try:
+        if fd_link is not None:
+            await register_foreign(fd_link, bbmd, args.foreign_ttl, max(args.timeout, 5.0), log, say)
         if args.network is not None and args.address:
             router = Address(parse_host_port(args.address))
             await app.nsap.update_router_references(None, router, [args.network])  # local table only
@@ -815,8 +858,9 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
                 warn(f"device {d} did not answer Who-Is")
             found = {k: v for k, v in found.items() if k in wanted}
         say(f"{len(found)} device(s): {', '.join(map(str, sorted(found))) or '-'}")
-        source = ", ".join(f"{k}={getattr(args, k)}" for k in ("who_is", "address", "network", "devices")
-                           if getattr(args, k) is not None)
+        source = ", ".join(f"{k}={getattr(args, k, None)}"
+                           for k in ("who_is", "address", "network", "devices", "foreign_bbmd")
+                           if getattr(args, k, None) is not None)
         cloner = Cloner(client, warn, say, use_rpm=not args.no_rpm,
                         object_lists=load_object_lists(args.object_list_file) if args.object_list_file else None)
         next_id = max([1000] + [d["device_id"] for d in devices]) + 1
@@ -839,9 +883,34 @@ async def run_clone(args: argparse.Namespace, progress=None) -> Dict[str, Any]:
         if not found:
             write_output(out, devices, source, len(warnings))
     finally:
+        if fd_link is not None and fd_link.bbmdRegistrationStatus == 0:
+            fd_link.unregister()  # Register-Foreign-Device with TTL 0
+            log(kind="foreign", bbmd=bbmd, status="unregistered")
+            await asyncio.sleep(0.2)  # let the datagram leave before the socket closes
         app.close()
         logf.close()
     return result
+
+
+async def register_foreign(link: BIPForeign, bbmd: str, ttl: int, wait: float, log, say) -> None:
+    """Wait for the BBMD's BVLC-Result to the Register-Foreign-Device that bacpypes3 sends on start-up."""
+    say(f"registering as foreign device with BBMD {bbmd} (TTL {ttl} s)")
+    log(kind="foreign", bbmd=bbmd, ttl=ttl, status="registering")
+    deadline = time.monotonic() + wait
+    while time.monotonic() < deadline:
+        code = link.bbmdRegistrationStatus  # -1 in process, 0 OK, >0 BVLC result code (NAK)
+        if code == 0:
+            log(kind="foreign", bbmd=bbmd, status="ok")
+            say(f"registered with BBMD {bbmd}")
+            return
+        if code > 0:
+            log(kind="foreign", bbmd=bbmd, status="nak", result_code=code)
+            raise ValueError(f"BBMD {bbmd} rejected the foreign device registration (BVLC-Result 0x{code:04X}); "
+                             f"is it a BBMD that accepts foreign devices?")
+        await asyncio.sleep(0.05)
+    log(kind="foreign", bbmd=bbmd, status="timeout")
+    raise ValueError(f"no answer from BBMD {bbmd} to Register-Foreign-Device within {wait:.0f} s "
+                     f"(wrong address/port, firewall, or not a BBMD)")
 
 
 def main(argv: Optional[List[str]] = None) -> int:

@@ -209,3 +209,58 @@ def test_object_list_file(tmp_path):
     assert got == lists[1011] and "object-list-file" in warnings[0]
     with pytest.raises(clone.ObjectListError):
         asyncio.run(cl._object_list(None, None, 1012, warnings.append))
+
+
+class _MockBBMD(asyncio.DatagramProtocol):
+    """Answers Register-Foreign-Device with ``code``; records every BVLL function / TTL it receives."""
+
+    def __init__(self, code: int) -> None:
+        self.code, self.seen = code, []
+
+    def connection_made(self, transport) -> None:
+        self.transport = transport
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        self.seen.append((data[1], data))
+        if data[:2] == b"\x81\x05" and int.from_bytes(data[4:6], "big"):
+            self.transport.sendto(b"\x81\x00\x00\x06" + self.code.to_bytes(2, "big"), addr)
+
+
+async def _foreign_clone(tmp_path, code: int):
+    ip = detect_ip()
+    loop = asyncio.get_running_loop()
+    transport, bbmd = await loop.create_datagram_endpoint(lambda: _MockBBMD(code), local_addr=(ip.split("/")[0], 47915))
+    try:
+        args = clone.build_parser().parse_args(
+            ["--foreign-bbmd", f"{ip.split('/')[0]}:47915", "--foreign-ttl", "60", "--who-is", "1-2", "--ip", ip,
+             "--port", "47916", "--timeout", "1", "--retries", "0", "-o", str(tmp_path / "fd.yaml")])
+        try:
+            return await clone.run_clone(args, progress=lambda m: None), bbmd.seen
+        except ValueError as e:
+            return e, bbmd.seen
+    finally:
+        transport.close()
+
+
+def test_clone_foreign_bbmd(tmp_path):
+    res, seen = asyncio.run(_foreign_clone(tmp_path, 0))
+    assert res["devices"] == [] and any("did not answer" in w or "no device" in w for w in res["warnings"])
+    funcs = [f for f, _ in seen]
+    # only BVLL registration (TTL 60, then TTL 0 on exit) and the Who-Is as Distribute-Broadcast-To-Network
+    assert set(funcs) <= {0x05, 0x09}, funcs
+    regs = [int.from_bytes(d[4:6], "big") for f, d in seen if f == 0x05]
+    assert regs[0] == 60 and regs[-1] == 0
+    dists = [d for f, d in seen if f == 0x09]
+    assert dists and all(d[6] == 0x10 and d[7] == 0x08 for d in dists)  # NPDU 01 00 + unconfirmed Who-Is
+    log = [json.loads(x) for x in (tmp_path / "fd.yaml.log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [x["status"] for x in log if x["kind"] == "foreign"] == ["registering", "ok", "unregistered"]
+
+
+def test_clone_foreign_bbmd_nak(tmp_path):
+    err, seen = asyncio.run(_foreign_clone(tmp_path, 0x0030))
+    assert isinstance(err, ValueError) and "rejected" in str(err)
+    assert not any(f == 0x09 for f, _ in seen)  # nothing distributed without a registration
+
+
+def test_route_ip():
+    assert clone.route_ip("127.0.0.1") == "127.0.0.1"

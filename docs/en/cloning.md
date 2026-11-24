@@ -17,7 +17,9 @@ answers requests from other devices (no I-Am, no ReadProperty answers). A test c
 asserts that the "real" devices received nothing but these three services.
 
 The only other traffic is network layer: with `--network N` and no `--address`, bacpypes3 may send
-Who-Is-Router-To-Network to find the router.
+Who-Is-Router-To-Network to find the router. With `--foreign-bbmd`, the BVLL link layer also sends
+Register-Foreign-Device (and TTL 0 on exit) and wraps broadcasts in Distribute-Broadcast-To-Network; these carry
+only the allowed APDUs.
 
 ## Running it on a gateway (Docker, main path)
 
@@ -68,8 +70,9 @@ sme-bacnet-sim clone [--who-is LOW-HIGH | --address IP[:PORT] | --network N] [--
 | `--who-is LOW-HIGH` | Who-Is with this instance range (local broadcast; one number = one device) |
 | `--address IP[:PORT]` | Unicast to this device. With `--devices`, no Who-Is is sent at all; without, a unicast Who-Is, then a read of `device,4194303` (wildcard instance) |
 | `--network N` | Remote network: Who-Is to `N:*`; with `--address`, the address is the BACnet router to network N |
+| `--foreign-bbmd HOST[:PORT]`, `--foreign-ttl S` | Register as a foreign device with this BBMD first (cross-subnet, see below; TTL default 300 s) |
 | `--devices ID,...` | Only these device instances (without `--who-is` the Who-Is range is their min..max) |
-| `--ip`, `--port` | Local address and UDP port of the clone client (default auto / 47808) |
+| `--ip`, `--port` | Local address and UDP port of the clone client (default: the interface that routes to `--foreign-bbmd` / `--address`, else auto / 47808) |
 | `--client-device-id` | Device instance of the clone client itself (default 4194300) |
 | `--rate` | Max requests per second (default 5) |
 | `--timeout`, `--retries` | Per request (APDU timeout and retries); `--timeout` is also the Who-Is wait |
@@ -91,6 +94,21 @@ How devices are read:
 - The YAML is rewritten after every device: after Ctrl+C the devices read so far are in the file;
   `--resume` continues.
 - `<out>.log.jsonl` logs every request, answer, error and warning (one JSON object per line).
+
+### Across subnets: `--foreign-bbmd`
+
+Who-Is broadcasts and the (broadcast) I-Am answers do not cross IP routers. If the site has a BBMD (often the
+BACnet router or the device simulator itself, "Operate as BBMD"), register with it as a foreign device:
+
+```bash
+sme-bacnet-sim clone --foreign-bbmd 192.168.251.8 --who-is 0-4194302 -o site.yaml
+```
+
+The BBMD distributes the Who-Is on its subnet and forwards the I-Am answers to the clone client, including those of
+devices behind a router on a virtual network (they are then read at `network:mac`). Without `--ip`, the client
+binds to the local address that routes to the BBMD, which matters on VPN / overlay routes (e.g. a Tailscale subnet
+route): bound to the LAN address, the requests leave without a usable source and nothing comes back. A NAK or no
+answer from the BBMD stops the clone with an error; on exit the registration is removed (TTL 0).
 
 ### Object list file
 

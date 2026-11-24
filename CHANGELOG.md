@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - `sme-bacnet-sim clone`: read-only clone of real BACnet devices into a simulator config (Who-Is / ReadProperty /
   ReadPropertyMultiple only), for offline tests (#1). See `docs/en/cloning.md`.
+- `clone --foreign-bbmd HOST[:PORT]` / `--foreign-ttl`: register as a foreign device with a BBMD to clone devices on
+  another subnet; without `--ip` the client binds to the interface that routes to the target (VPN / overlay routes).
 - Multi-arch Docker image: `ghcr.io/smartedge-tech-dev/sme-bacnet-sim` is now published for `linux/amd64`,
   `linux/arm64` and `linux/arm/v7` (e.g. Moxa gateways).
 - Offline image archives on each release: `sme-bacnet-sim-<ver>-linux-amd64.tar.gz`, `-linux-arm64.tar.gz`,
