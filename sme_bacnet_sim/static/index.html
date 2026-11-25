@@ -5,10 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SME BACnetSim</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-  <link rel="stylesheet" href="/static/shell/shell.css">
+  <!-- Load order (sme-sim-common design §5): common shell CSS, then the product CSS (accent override). -->
+  <link rel="stylesheet" href="/sme-sim-common/shell/shell.css?v=__SME_SIM_COMMON_VERSION__">
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Loaded in <head> so the stored theme applies before first paint. -->
-  <script src="/static/shell/shell.js" data-storage="sme-bacnet-sim"></script>
+  <!-- Loaded in <head> so the stored theme applies before first paint.
+       __SME_SIM_COMMON_VERSION__ is replaced with the sme-sim-common version when GET / is served. -->
+  <script src="/sme-sim-common/shell/shell.js?v=__SME_SIM_COMMON_VERSION__"
+          data-storage="sme-bacnet-sim" data-common-version="__SME_SIM_COMMON_VERSION__"></script>
 </head>
 <body class="sh-tool">
 <!-- Shell.init() inserts the header before .sh-body and the footer after it. -->
@@ -25,11 +28,11 @@
       <div class="tablewrap">
         <table class="points">
           <thead><tr>
-            <th data-i18n="col.name">Name</th><th data-i18n="col.object">Object</th>
-            <th class="num" data-i18n="col.value">Value</th><th data-i18n="col.units">Units</th>
+            <th data-i18n="common.col.name">Name</th><th data-i18n="col.object">Object</th>
+            <th class="num" data-i18n="common.col.value">Value</th><th data-i18n="col.units">Units</th>
             <th data-i18n="col.pri" data-i18n-title="col.pri.title">Pri</th>
             <th data-i18n="col.oos" data-i18n-title="col.oos.title">OOS</th>
-            <th data-i18n="col.behavior">Behavior</th><th data-i18n="col.command">Command</th>
+            <th data-i18n="common.col.behavior">Behavior</th><th data-i18n="col.command">Command</th>
           </tr></thead>
           <tbody id="points"></tbody>
         </table>
@@ -44,7 +47,7 @@
   </div>
 
   <section class="logbar" id="logbar">
-    <div class="loghead" id="logHead"><span data-i18n="log.title">Event log</span> <span id="logCount"></span></div>
+    <div class="loghead" id="logHead"><span data-i18n="common.event_log.title">Event log</span> <span id="logCount"></span></div>
     <ul id="log" class="log"></ul>
   </section>
 </div>
@@ -57,8 +60,8 @@
     <textarea id="yamlText" spellcheck="false"></textarea>
     <div class="err" id="yamlErr"></div>
     <div class="dlgbtns">
-      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
-      <button class="btn primary" id="yamlApply" value="default" data-i18n="dlg.apply">Apply</button>
+      <button class="btn" value="cancel" data-i18n="common.dlg.cancel">Cancel</button>
+      <button class="btn primary" id="yamlApply" value="default" data-i18n="common.dlg.apply">Apply</button>
     </div>
   </form>
 </dialog>
@@ -74,7 +77,7 @@
     <label><span data-i18n="add.params">Parameters (YAML)</span> <textarea id="addParams" rows="5" spellcheck="false"></textarea></label>
     <div class="err" id="addErr"></div>
     <div class="dlgbtns">
-      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
+      <button class="btn" value="cancel" data-i18n="common.dlg.cancel">Cancel</button>
       <button class="btn primary" id="addApply" value="default" data-i18n="add.submit">Add</button>
     </div>
   </form>
@@ -100,13 +103,13 @@
     <p class="hint" id="netHint"></p>
     <div class="err" id="netErr"></div>
     <div class="dlgbtns">
-      <button class="btn" value="cancel" data-i18n="dlg.cancel">Cancel</button>
-      <button class="btn primary" id="netApply" value="default" data-i18n="dlg.apply">Apply</button>
+      <button class="btn" value="cancel" data-i18n="common.dlg.cancel">Cancel</button>
+      <button class="btn primary" id="netApply" value="default" data-i18n="common.dlg.apply">Apply</button>
     </div>
   </form>
 </dialog>
 
-<dialog id="dlgProps"class="dialog sh-dialog propsdlg">
+<dialog id="dlgProps" class="dialog sh-dialog propsdlg">
   <form method="dialog" class="dlgform">
     <h3 id="propsTitle"></h3>
     <div class="propswrap"><table class="props">
@@ -118,11 +121,15 @@
     <div class="err" id="propsErr"></div>
     <div class="dlgbtns">
       <button class="btn" type="button" id="propsRefresh" data-i18n="props.refresh">Refresh</button>
-      <button class="btn primary" value="cancel" data-i18n="alarms.close">Close</button>
+      <button class="btn primary" value="cancel" data-i18n="common.dlg.close">Close</button>
     </div>
   </form>
 </dialog>
 
+<!-- Vendor preset (Shell.vendors.smartEdge + vendor.* strings) and common.* strings, then product strings. -->
+<script src="/sme-sim-common/vendor/vendor.js?v=__SME_SIM_COMMON_VERSION__"></script>
+<script src="/sme-sim-common/i18n/common.js?v=__SME_SIM_COMMON_VERSION__"></script>
+<script src="/static/i18n/en.js"></script>
 <script src="/static/i18n/ja.js"></script>
 <script src="/static/i18n/zh.js"></script>
 <script src="/static/app.js"></script>

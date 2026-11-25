@@ -1,6 +1,7 @@
 "use strict";
 // SME BACnetSim web UI: vanilla JS, no build step. Generic chrome (header, menus, footer, theme, i18n)
-// lives in shell/shell.js; this file holds the BACnet-specific UI.
+// lives in sme-sim-common (/sme-sim-common/shell/shell.js, vendor/vendor.js, i18n/common.js); this file holds
+// the BACnet-specific UI. Its English strings are in i18n/en.js.
 
 // ------------------------------------------------------------------ product config (single spot)
 
@@ -18,230 +19,12 @@ const PRODUCT = {
     issues: `${REPO_URL}/issues/new`,
     license: `${REPO_URL}/blob/main/LICENSE`,
   },
-  // Company behind SME BACnetSim (facts from smartedge-tech.com). Blurb and services are i18n keys below.
-  vendor: {
-    name: "smart-edge",
-    nameLocal: "智届科技",
-    url: "https://smartedge-tech.com",
-    contactUrl: CONTACT_URL,
-    email: "business@smartedge-tech.com",
-    logoUrl: "/static/brand/company-logo.svg",
-    blurb: "vendor.blurb",
-    services: ["vendor.svc.ems", "vendor.svc.market", "vendor.svc.edge", "vendor.svc.integration",
-      "vendor.svc.ai", "vendor.svc.cloud"],
-  },
   // Navy parts use currentColor so the mark follows the theme; the accent block stays brand blue.
   logoSvg: `<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M8 34V9h15v25M12 15h7M12 20.5h7M12 26h7M4 34h32M30.5 34V22" stroke="currentColor" stroke-width="2.4"/>
     <rect x="25.5" y="11" width="10" height="10" fill="#087def"/></svg>`,
 };
 
-// ------------------------------------------------------------------ UI strings (en)
-
-Shell.addStrings("en", {
-  "vendor.blurb": "Nanjing Smart-Edge Technology Co., Ltd. (南京智届科技有限公司) has, since its founding in 2023, " +
-    "developed end-to-end software for distributed energy resources such as solar, batteries and EVs — " +
-    "from equipment control to the cloud and electricity markets. The team supports projects in Japanese, " +
-    "from requirements definition through design, implementation, operation and maintenance.",
-  "vendor.svc.ems": "Energy management systems (EMS)",
-  "vendor.svc.market": "RA / AC systems for electricity markets (JEPX, EPRX, OCCTO)",
-  "vendor.svc.edge": "Edge IoT and equipment-control software",
-  "vendor.svc.integration": "Equipment integration: Modbus, MQTT, BACnet, ECHONET Lite, OpenADR 2.0b",
-  "vendor.svc.ai": "Energy forecasting and data analytics",
-  "vendor.svc.cloud": "Cloud infrastructure design, build and operation",
-  "menu.file": "File",
-  "menu.file.import": "Import…",
-  "menu.file.import.title": "Import a YAML / JSON config file, an Excel point list (.xlsx), or EDE CSV files (main + state texts) / EDE zip",
-  "menu.file.export": "Export",
-  "menu.file.export.yaml": "YAML",
-  "menu.file.export.json": "JSON",
-  "menu.file.export.ede": "EDE (CSV zip)",
-  "menu.file.export.xlsx": "Excel point list (.xlsx)",
-  "menu.file.template": "Download blank Excel template",
-  "menu.file.template.title": "Empty point-list workbook (Devices / Points / StateTexts / Network sheets) to fill in and import",
-  "menu.file.save": "Save",
-  "menu.file.save.title": "Write config back to {path}",
-  "menu.file.save.none": "No config file to write back to",
-  "menu.edit": "Edit",
-  "menu.edit.config": "Edit configuration…",
-  "menu.edit.add": "Add device…",
-  "menu.edit.copy": "Copy",
-  "menu.edit.copy.title": "Copy the selected points, or the device when no point is selected (Ctrl+C)",
-  "menu.edit.paste": "Paste",
-  "menu.edit.paste.title": "Paste the copied device / points into the current device (Ctrl+V)",
-  "dev.copy": "Copy",
-  "dev.copy.title": "Copy this device (Ctrl+C with no point selected; right-click a device in the list)",
-  "dev.paste": "Paste",
-  "dev.paste.title": "Paste: a copied device is duplicated; copied points are added to this device (Ctrl+V)",
-  "dev.props": "Properties",
-  "dev.props.title": "All properties of the device object",
-  "row.props.title": "All properties of this object",
-  "clip.device": "Copied device {name}",
-  "clip.objects": "Copied {n} point(s) from {name}",
-  "clip.empty": "Clipboard is empty",
-  "clip.duplicated": "Device {name} ({id}) added",
-  "clip.pasted": "Pasted {n} point(s)",
-  "clip.rejected": "{n} point(s) not pasted: {list}",
-  "props.title": "{object} — properties",
-  "props.col.id": "ID",
-  "props.col.name": "Property",
-  "props.col.value": "Value",
-  "props.col.type": "Datatype",
-  "props.col.edit": "Write",
-  "props.ro": "read-only",
-  "props.constructed": "read-only here (constructed)",
-  "props.set": "Set",
-  "props.null": "Relinquish",
-  "props.refresh": "Refresh",
-  "props.written": "{prop} written",
-  "menu.sim": "Simulation",
-  "menu.sim.run": "Run",
-  "menu.sim.pause": "Pause",
-  "menu.sim.speed": "Speed",
-  "menu.sim.sync": "Sync to PC clock",
-  "dev.comm": "Communication: {state}",
-  "dev.comm.title": "Disabled with DeviceCommunicationControl — only DCC / ReinitializeDevice are answered",
-  "dev.comm.enable": "Enable communication",
-  "menu.view": "View",
-  "menu.view.log": "Event log",
-  "status.running": "Running",
-  "status.paused": "Paused",
-  "status.toggle": "Simulation is {state} — click to toggle",
-  "status.clock": "Simulation clock",
-  "status.ws.on": "WebSocket connected",
-  "status.ws.off": "WebSocket disconnected",
-  "status.connecting": "connecting…",
-  "net.info": "BACnet/IP {bind} · router {router} · VNET {vnet}",
-  "net.bbmd": " · BBMD",
-  "net.fd": " · FD → {bbmd} ({status})",
-  "net.fd.ok": "ok",
-  "net.fd.registering": "registering",
-  "net.fd.timeout": "failed: no answer",
-  "net.fd.nak": "failed: NAK",
-  "side.filter": "Filter devices / points…",
-  "side.add": "+ Add device",
-  "dev.item": "device {id} · {addr}",
-  "dev.empty": "No devices. Import a config file or add a device.",
-  "dev.meta": "device,{id} · address {addr} · {template}",
-  "dev.priority": "write priority",
-  "dev.editYaml": "Edit YAML",
-  "dev.delete": "Delete",
-  "dev.confirmDelete": "Delete device {name} ({id})?",
-  "col.name": "Name",
-  "col.object": "Object",
-  "col.value": "Value",
-  "col.units": "Units",
-  "col.pri": "Pri",
-  "col.pri.title": "Current command priority",
-  "col.oos": "OOS",
-  "col.oos.title": "Out of service",
-  "col.behavior": "Behavior",
-  "col.command": "Command",
-  "row.oos.title": "Out of service: freezes the simulated behavior",
-  "val.active": "active",
-  "val.inactive": "inactive",
-  "cmd.on": "ON",
-  "cmd.off": "OFF",
-  "cmd.set": "Set",
-  "loop.pv": "PV",
-  "loop.sp": "SP",
-  "cmd.relinquish": "Relinquish",
-  "cmd.relinquish.title": "Release the current command priority",
-  "trend.close": "Close trend",
-  "tl.records": "{n} / {size} records",
-  "tl.target": "logs {target} every {interval} s",
-  "tl.enable": "Enable",
-  "tl.enable.title": "Enable logging (BACnet Enable property)",
-  "sch.targets": "writes {targets} @ priority {priority}",
-  "sch.notargets": "no targets",
-  "sch.next": "next {time} → {value}",
-  "sch.nonext": "no change within 8 days",
-  "sch.weekly": "Weekly schedule (default: {value})",
-  "sch.exceptions": "Exceptions",
-  "sch.prio": "priority {priority}",
-  "sch.edit": "Read-only view; edit via Edit YAML or BACnet WriteProperty.",
-  "cal.today": "today: {value}",
-  "cal.dates": "Date list",
-  "nc.priority": "Priority {offnormal}/{fault}/{normal}",
-  "nc.ack": "Ack required: {flags}",
-  "file.bytes": "{n} bytes",
-  "file.records": "{n} records / {bytes} bytes",
-  "file.readonly": "read-only",
-  "file.modified": "modified {time}",
-  "prog.change": "Program change…",
-  "prog.change.title": "Write Program_Change (load / run / halt / restart / unload)",
-  "ls.state": "Detector state…",
-  "ls.state.title": "Set the detector state (Tracking_Value); Present_Value latches until a LifeSafetyOperation reset",
-  "ls.tracking": "tracking",
-  "ls.mode": "mode",
-  "ls.members": "members: {names}",
-  "nc.recipients": "{n} recipient(s)",
-  "nc.norecipients": "no recipients",
-  "ee.watch": "{event_type} on {object}",
-  "ee.readonly": "Event enrollment: parameters are set in the configuration or by BACnet writes",
-  "nc.recipient": "{recipient} (process {process}, {mode})",
-  "nc.confirmed": "confirmed",
-  "nc.unconfirmed": "unconfirmed",
-  "nc.readonly": "Notification class (read-only here; edit it in the configuration)",
-  "day.mon": "Mon", "day.tue": "Tue", "day.wed": "Wed", "day.thu": "Thu", "day.fri": "Fri", "day.sat": "Sat", "day.sun": "Sun",
-  "log.title": "Event log",
-  "dlg.cancel": "Cancel",
-  "menu.view.alarms": "Alarms…",
-  "status.alarms": "{active} active alarm(s), {unacked} unacknowledged — click for the list",
-  "alarm.state.normal": "normal",
-  "alarm.state.high-limit": "high limit",
-  "alarm.state.low-limit": "low limit",
-  "alarm.state.offnormal": "off-normal",
-  "alarm.state.fault": "fault",
-  "alarm.unacked": "unacknowledged",
-  "alarm.ack": "Ack",
-  "alarm.ack.title": "Acknowledge the alarm",
-  "alarms.title": "Alarms",
-  "alarms.empty": "No active or unacknowledged alarms",
-  "alarms.col.device": "Device",
-  "alarms.col.object": "Object",
-  "alarms.col.state": "State",
-  "alarms.col.value": "Value",
-  "alarms.close": "Close",
-  "dlg.apply": "Apply",
-  "dlg.editDevice": "Edit device {id}",
-  "dlg.editAll": "Edit full configuration",
-  "add.title": "Add device",
-  "add.template": "Template",
-  "add.id": "Device ID",
-  "add.id.ph": "auto",
-  "add.name": "Name",
-  "add.params": "Parameters (YAML)",
-  "add.submit": "Add",
-  "menu.edit.network": "BACnet network…",
-  "netdlg.title": "BACnet network",
-  "netdlg.open": "Click to change the BACnet network settings",
-  "netdlg.adapter": "Network adapter",
-  "netdlg.auto": "Auto-detect",
-  "netdlg.configured": "Configured: {ip} (not found on this computer)",
-  "netdlg.port": "UDP port",
-  "netdlg.netnum": "IP network number",
-  "netdlg.vnet": "Virtual network number",
-  "netdlg.router": "Router device ID",
-  "netdlg.mode": "Mode",
-  "netdlg.mode.normal": "Normal",
-  "netdlg.mode.bbmd": "BBMD (accept foreign devices)",
-  "netdlg.mode.foreign": "Foreign device (register with a BBMD)",
-  "netdlg.fd.bbmd": "BBMD address",
-  "netdlg.fd.ttl": "TTL (s)",
-  "netdlg.hint": "Apply rebinds BACnet/IP without restarting; clients have to discover the devices again.",
-  "netdlg.save": "Saved to {path} (network section only).",
-  "netdlg.nosave": "Started without a config file: the settings are not saved.",
-  "netdlg.saved": "Network settings applied and saved to {path}",
-  "netdlg.applied": "Network settings applied",
-  "netdlg.saveFailed": "Network settings applied, but saving failed: {err}",
-  "import.ok": "Configuration imported",
-  "import.warn": "Imported with {n} warnings (see event log)",
-  "import.fail": "Import failed: {msg}",
-  "save.ok": "Configuration saved",
-  "about.stack": "Protocol stack",
-  "about.stack.value": "BACnet/IP (ASHRAE 135) via bacpypes3, virtual network behind a simulated router",
-});
 const t = Shell.t;
 
 // ------------------------------------------------------------------ state
@@ -291,7 +74,12 @@ async function api(method, url, body, raw) {
   const r = await fetch(url, opt);
   const ct = r.headers.get("content-type") || "";
   const data = ct.includes("json") ? await r.json() : await r.text();
-  if (!r.ok) throw new Error(typeof data === "string" ? data : (data.detail || JSON.stringify(data)));
+  if (!r.ok) {
+    if (typeof data === "string") throw new Error(data);
+    const msg = data.error || (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data));
+    const errs = data.errors || (data.detail && data.detail.errors) || [];
+    throw new Error(errs.length ? `${msg}: ${errs.slice(0, 5).join("; ")}` : msg);
+  }
   return data;
 }
 
@@ -328,7 +116,7 @@ function setSnapshot(snap) {
   renderNet(snap.network);
   Shell.updateItem("file.save", {
     disabled: !snap.config_path,
-    title: snap.config_path ? t("menu.file.save.title", { path: snap.config_path }) : t("menu.file.save.none"),
+    title: snap.config_path ? t("common.config.save.title", { path: snap.config_path }) : t("menu.file.save.none"),
   });
   if (snap.sim_hour != null) $("clock").textContent = hhmm(snap.sim_hour);
   renderSim(snap.simulation);
@@ -397,7 +185,7 @@ function openAlarms() {
     dlg.id = "dlgAlarms";
     dlg.className = "dialog sh-dialog";
     dlg.innerHTML = `<form method="dialog" class="dlgform"><h3>${esc(t("alarms.title"))}</h3><div class="alarmbody"></div>
-      <div class="dlgbtns"><button class="btn" value="cancel">${esc(t("alarms.close"))}</button></div></form>`;
+      <div class="dlgbtns"><button class="btn" value="cancel">${esc(t("common.dlg.close"))}</button></div></form>`;
     document.body.append(dlg);
   }
   if (!dlg.open) dlg.showModal();
@@ -411,12 +199,12 @@ function speedItems(cur) {
 
 function renderSim(sim) {
   const ind = $("runInd");
-  const state = sim.running ? t("status.running") : t("status.paused");
+  const state = sim.running ? t("common.sim.running") : t("common.sim.paused");
   ind.classList.toggle("paused", !sim.running);
   ind.querySelector(".st-run-lbl").textContent = state;
-  ind.title = t("status.toggle", { state: state.toLowerCase() });
+  ind.title = t("common.sim.toggle", { state });
   ind.setAttribute("aria-label", ind.title);
-  Shell.updateItem("sim.run", { label: sim.running ? "menu.sim.pause" : "menu.sim.run" });
+  Shell.updateItem("sim.run", { label: sim.running ? "common.sim.pause" : "common.sim.run" });
   Shell.updateItem("sim.speed", { submenu: speedItems(sim.time_scale) });
 }
 
@@ -972,7 +760,7 @@ function drawTrend() {
 
 function addLog(e) {
   const li = document.createElement("li");
-  li.innerHTML = `<span class="t">${new Date(e.t * 1000).toLocaleTimeString()}</span><span class="k-${esc(e.kind)}">[${esc(e.kind)}] ${esc(e.text)}</span>`;
+  li.innerHTML = `<span class="t">${new Date(e.t * 1000).toLocaleTimeString()}</span><span class="k-${esc(e.kind || e.level)}">[${esc(e.kind || e.level)}] ${esc(e.message)}</span>`;
   const ul = $("log");
   ul.prepend(li);
   while (ul.children.length > 200) ul.lastChild.remove();
@@ -1222,14 +1010,25 @@ function propEditor(devId, key, p) {
 
 const setSim = (body) => api("POST", "/api/simulation", body).catch((e) => toast(e.message));
 const toggleRun = () => { if (S.snap) setSim({ running: !S.snap.simulation.running }); };
-const saveConfig = () => api("POST", "/api/config/save").then(() => toast(t("save.ok"), "ok")).catch((e) => toast(e.message));
+const saveConfig = () => api("POST", "/api/config/save").then((r) => toast(t("common.config.saved", { path: r.path }), "ok")).catch((e) => toast(e.message));
 
 async function importFiles(e) {
+  // Excel: the common xlsx import; EDE (.csv / .zip): the BACnet route; YAML / JSON: the config text via PUT /api/config.
   const files = [...e.target.files]; if (!files.length) return;
-  const fd = new FormData(); files.forEach((f) => fd.append("file", f));
+  const names = files.map((f) => f.name.toLowerCase());
   try {
-    const r = await api("POST", "/api/config/import", fd);
-    if (r && r.warnings && r.warnings.length) toast(t("import.warn", { n: r.warnings.length }), "info");
+    let r;
+    if (names.some((n) => n.endsWith(".xlsx"))) {
+      if (files.length !== 1) throw new Error("Excel (.xlsx) import takes a single file");
+      const fd = new FormData(); fd.append("file", files[0]);
+      r = await api("POST", "/api/config/import", fd);
+    } else if (names.some((n) => n.endsWith(".csv") || n.endsWith(".zip"))) {
+      const fd = new FormData(); files.forEach((f) => fd.append("file", f));
+      r = await api("POST", "/api/config/import-ede", fd);
+    } else if (files.length === 1) {
+      r = await api("PUT", "/api/config", await files[0].text(), true);
+    } else throw new Error("multiple files are only supported for EDE (.csv) import");
+    if (r && r.warnings && r.warnings.length) toast(`${t("import.warn", { n: r.warnings.length })}\n${r.warnings.slice(0, 5).join("\n")}`, "info");
     else toast(t("import.ok"), "ok");
   } catch (er) { toast(t("import.fail", { msg: er.message })); }
   e.target.value = "";
@@ -1239,38 +1038,39 @@ async function importFiles(e) {
 
 Shell.init({
   ...PRODUCT,
+  vendor: Shell.vendors.smartEdge,
   about: [["about.stack", t("about.stack.value")]],
   // A function so Shell.helpMenu() sees the links passed above.
   menus: () => [
-    { id: "file", label: "menu.file", items: [
+    { id: "file", label: "common.menu.file", items: [
       { id: "file.import", label: "menu.file.import", title: t("menu.file.import.title"), onClick: () => $("fileImport").click() },
       { id: "file.export", label: "menu.file.export", submenu: [
         { id: "file.export.yaml", label: "menu.file.export.yaml", href: "/api/config/export?format=yaml", download: true },
         { id: "file.export.json", label: "menu.file.export.json", href: "/api/config/export?format=json", download: true },
         { id: "file.export.ede", label: "menu.file.export.ede", href: "/api/config/export?format=ede", download: true },
-        { id: "file.export.xlsx", label: "menu.file.export.xlsx", href: "/api/config/export?format=xlsx", download: true },
+        { id: "file.export.xlsx", label: "menu.file.export.xlsx", href: "/api/config/xlsx", download: true },
       ] },
-      { id: "file.template", label: "menu.file.template", title: t("menu.file.template.title"), href: "/api/config/xlsx-template", download: true },
+      { id: "file.template", label: "common.config.xlsx_template", title: t("menu.file.template.title"), href: "/api/config/xlsx-template", download: true },
       { separator: true },
-      { id: "file.save", label: "menu.file.save", disabled: true, onClick: saveConfig },
+      { id: "file.save", label: "common.config.save", disabled: true, onClick: saveConfig },
     ] },
-    { id: "edit", label: "menu.edit", items: [
+    { id: "edit", label: "common.menu.edit", items: [
       { id: "edit.copy", label: "menu.edit.copy", title: t("menu.edit.copy.title"), onClick: copySel },
       { id: "edit.paste", label: "menu.edit.paste", title: t("menu.edit.paste.title"), onClick: pasteClip },
-      { id: "edit.config", label: "menu.edit.config", onClick: editConfig },
+      { id: "edit.config", label: "common.config.edit", onClick: editConfig },
       { id: "edit.add", label: "menu.edit.add", onClick: openAdd },
       { separator: true },
       { id: "edit.network", label: "menu.edit.network", onClick: openNetwork },
     ] },
-    { id: "sim", label: "menu.sim", items: [
-      { id: "sim.run", label: "menu.sim.pause", onClick: toggleRun },
-      { id: "sim.speed", label: "menu.sim.speed", submenu: speedItems(null) },
+    { id: "sim", label: "common.menu.sim", items: [
+      { id: "sim.run", label: "common.sim.pause", onClick: toggleRun },
+      { id: "sim.speed", label: "common.sim.time_scale", submenu: speedItems(null) },
       { id: "sim.sync", label: "menu.sim.sync", onClick: async () => {
-        try { await api("POST", "/api/simulation", { set_time: new Date().toISOString() }); } catch (e) { toast(e.message); }
+        try { await api("POST", "/api/simulation/clock", { set_time: new Date().toISOString() }); } catch (e) { toast(e.message); }
       } },
     ] },
-    { id: "view", label: "menu.view", items: [
-      { id: "view.log", label: "menu.view.log", checked: true, onClick: toggleLog },
+    { id: "view", label: "common.menu.view", items: [
+      { id: "view.log", label: "common.event_log.title", checked: true, onClick: toggleLog },
       { id: "view.alarms", label: "menu.view.alarms", onClick: openAlarms },
       { separator: true },
       Shell.themeItem(),
@@ -1282,14 +1082,14 @@ Shell.init({
 
 Shell.setStatus(`
   <button type="button" class="st-alarm" id="alarmInd" hidden><span aria-hidden="true">⚠</span><span class="st-alarm-n">0</span></button>
-  <span class="st-clock" id="clock" title="${esc(t("status.clock"))}">--:--</span>
+  <span class="st-clock" id="clock" title="${esc(t("common.sim.time"))}">--:--</span>
   <button type="button" class="st-run" id="runInd"><span class="st-run-lbl"></span></button>
-  <button type="button" class="st-net" id="netinfo">${esc(t("status.connecting"))}</button>
-  <span class="conn off" id="conn" role="img" title="${esc(t("status.ws.off"))}" aria-label="${esc(t("status.ws.off"))}"></span>`);
+  <button type="button" class="st-net" id="netinfo">${esc(t("common.backend.connecting"))}</button>
+  <span class="conn off" id="conn" role="img" title="${esc(t("common.backend.disconnected"))}" aria-label="${esc(t("common.backend.disconnected"))}"></span>`);
 renderSim({ running: true, time_scale: null });
 
 function setConn(on) {
-  const c = $("conn"), label = t(on ? "status.ws.on" : "status.ws.off");
+  const c = $("conn"), label = t(on ? "common.backend.connected" : "common.backend.disconnected");
   c.classList.toggle("off", !on); c.title = label; c.setAttribute("aria-label", label);
 }
 

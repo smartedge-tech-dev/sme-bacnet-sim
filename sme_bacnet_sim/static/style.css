@@ -1,4 +1,20 @@
-/* SME BACnetSim app styles. Shell tokens (--ink, --muted, --line, --accent, --pale, --surface, ...) come from shell/shell.css. */
+/* SME BACnetSim app styles. Shell tokens (--ink, --muted, --line, --accent, --pale, --surface, ...) come from sme-sim-common (/sme-sim-common/shell/shell.css). */
+
+/* ---- Product accent (one accent per product; registered in the sme-sim-common README accent table).
+   SME BACnetSim keeps the brand blue. Override only --accent / --accent-ink / --accent-weak: the vendor area
+   uses --vendor-accent and must not follow the product accent. */
+:root {
+  --accent: #087def; --accent-ink: #fff; --accent-weak: #e7f2fe;
+}
+:root[data-theme="dark"] {
+  --accent: #3d9bff; --accent-ink: #fff; --accent-weak: #11304f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #3d9bff; --accent-ink: #fff; --accent-weak: #11304f;
+  }
+}
+
 
 /* ------------------------------------------------------------------ header status (BACnet specific content) */
 .st-clock { font-family: var(--mono); font-size: 14px; color: var(--ink); }
