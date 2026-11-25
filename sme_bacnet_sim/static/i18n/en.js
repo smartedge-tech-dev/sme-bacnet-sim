@@ -8,7 +8,6 @@ Shell.addStrings("en", {
   "menu.file.export.yaml": "YAML",
   "menu.file.export.json": "JSON",
   "menu.file.export.ede": "EDE (CSV zip)",
-  "menu.file.export.xlsx": "Excel point list (.xlsx)",
   "menu.file.template.title": "Empty point-list workbook (Devices / Points / StateTexts / Network sheets) to fill in and import",
   "menu.file.save.none": "No config file to write back to",
   "menu.edit.add": "Add device…",

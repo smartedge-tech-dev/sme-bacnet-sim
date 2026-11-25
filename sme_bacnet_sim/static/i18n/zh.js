@@ -7,7 +7,6 @@ Shell.addStrings("zh", {
   "menu.file.export.yaml": "YAML",
   "menu.file.export.json": "JSON",
   "menu.file.export.ede": "EDE（CSV zip）",
-  "menu.file.export.xlsx": "Excel 点表（.xlsx）",
   "menu.file.template.title": "填写后导入的空白点表（Devices / Points / StateTexts / Network 工作表）",
   "menu.file.save.none": "没有可写回的配置文件",
   "menu.edit.add": "添加设备…",

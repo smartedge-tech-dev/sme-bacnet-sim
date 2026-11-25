@@ -82,8 +82,9 @@ def main(argv=None) -> int:
                             before=load_user_templates, summary=lambda c: f"{len(c.devices)} devices")
     ap = argparse.ArgumentParser(prog="sme-bacnet-sim", description="BACnet/IP device simulator with a web UI")
     # -c/--config (default: configs/demo-building.yaml if present), --host, --http-port (alias --port),
-    # --no-browser, --version, -v, --templates-dir
-    add_common_args(ap, default_http_port=8080, app_name="sme-bacnet-sim", version=__version__)
+    # --browser / --no-browser (0.4.0 behaviour: the browser is opened only with --browser), --version, -v,
+    # --templates-dir
+    add_common_args(ap, default_http_port=8080, app_name="sme-bacnet-sim", version=__version__, open_browser=False)
     ap.add_argument("--ip", help='BACnet bind address, e.g. "192.168.1.10/24" (overrides config)')
     ap.add_argument("--bacnet-port", type=int, help="BACnet/IP UDP port (overrides config, default 47808)")
     ap.add_argument("--foreign-bbmd", metavar="HOST[:PORT]",

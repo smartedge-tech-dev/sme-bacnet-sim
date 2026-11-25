@@ -7,7 +7,6 @@ Shell.addStrings("ja", {
   "menu.file.export.yaml": "YAML",
   "menu.file.export.json": "JSON",
   "menu.file.export.ede": "EDE（CSV zip）",
-  "menu.file.export.xlsx": "Excel ポイントリスト（.xlsx）",
   "menu.file.template.title": "記入してインポートする空のポイントリスト（Devices / Points / StateTexts / Network シート）",
   "menu.file.save.none": "書き戻し先の設定ファイルがありません",
   "menu.edit.add": "デバイスを追加…",

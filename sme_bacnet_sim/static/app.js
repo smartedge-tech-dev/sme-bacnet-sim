@@ -77,7 +77,7 @@ async function api(method, url, body, raw) {
   if (!r.ok) {
     if (typeof data === "string") throw new Error(data);
     const msg = data.error || (typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data));
-    const errs = data.errors || (data.detail && data.detail.errors) || [];
+    const errs = data.errors || [];
     throw new Error(errs.length ? `${msg}: ${errs.slice(0, 5).join("; ")}` : msg);
   }
   return data;
@@ -821,7 +821,7 @@ async function openAdd() {
       const body = { template: sel.value, name: $("addName").value.trim(), params };
       if ($("addId").value) body.device_id = Number($("addId").value);
       const r = await api("POST", "/api/devices", body);
-      S.dev = r.device_id;
+      S.dev = r.name; // the common device routes return the key (device_id) as "name"
       $("dlgAdd").close();
     } catch (e) { $("addErr").textContent = e.message; }
   };
@@ -903,8 +903,8 @@ async function pasteClip() {
   try {
     if (c.kind === "device") {
       const r = await api("POST", `/api/devices/${c.device_id}/duplicate`);
-      S.dev = r.device_id; S.sel.clear();
-      toast(t("clip.duplicated", { name: r.name, id: r.device_id }), "ok");
+      S.dev = r.name; S.sel.clear();
+      toast(t("clip.duplicated", { name: r.device.name, id: r.name }), "ok");
       return;
     }
     if (S.dev == null) return;
@@ -1013,21 +1013,12 @@ const toggleRun = () => { if (S.snap) setSim({ running: !S.snap.simulation.runni
 const saveConfig = () => api("POST", "/api/config/save").then((r) => toast(t("common.config.saved", { path: r.path }), "ok")).catch((e) => toast(e.message));
 
 async function importFiles(e) {
-  // Excel: the common xlsx import; EDE (.csv / .zip): the BACnet route; YAML / JSON: the config text via PUT /api/config.
+  // One entry point (POST /api/config/import, the first file's extension picks the importer): Excel (.xlsx),
+  // EDE (.csv main + state-text files, or a .zip of both), YAML / JSON (.yaml / .yml / .json, a single file).
   const files = [...e.target.files]; if (!files.length) return;
-  const names = files.map((f) => f.name.toLowerCase());
   try {
-    let r;
-    if (names.some((n) => n.endsWith(".xlsx"))) {
-      if (files.length !== 1) throw new Error("Excel (.xlsx) import takes a single file");
-      const fd = new FormData(); fd.append("file", files[0]);
-      r = await api("POST", "/api/config/import", fd);
-    } else if (names.some((n) => n.endsWith(".csv") || n.endsWith(".zip"))) {
-      const fd = new FormData(); files.forEach((f) => fd.append("file", f));
-      r = await api("POST", "/api/config/import-ede", fd);
-    } else if (files.length === 1) {
-      r = await api("PUT", "/api/config", await files[0].text(), true);
-    } else throw new Error("multiple files are only supported for EDE (.csv) import");
+    const fd = new FormData(); files.forEach((f) => fd.append("file", f));
+    const r = await api("POST", "/api/config/import", fd);
     if (r && r.warnings && r.warnings.length) toast(`${t("import.warn", { n: r.warnings.length })}\n${r.warnings.slice(0, 5).join("\n")}`, "info");
     else toast(t("import.ok"), "ok");
   } catch (er) { toast(t("import.fail", { msg: er.message })); }
@@ -1048,7 +1039,7 @@ Shell.init({
         { id: "file.export.yaml", label: "menu.file.export.yaml", href: "/api/config/export?format=yaml", download: true },
         { id: "file.export.json", label: "menu.file.export.json", href: "/api/config/export?format=json", download: true },
         { id: "file.export.ede", label: "menu.file.export.ede", href: "/api/config/export?format=ede", download: true },
-        { id: "file.export.xlsx", label: "menu.file.export.xlsx", href: "/api/config/xlsx", download: true },
+        { id: "file.export.xlsx", label: "common.config.export_xlsx", href: "/api/config/xlsx", download: true },
       ] },
       { id: "file.template", label: "common.config.xlsx_template", title: t("menu.file.template.title"), href: "/api/config/xlsx-template", download: true },
       { separator: true },
@@ -1066,7 +1057,7 @@ Shell.init({
       { id: "sim.run", label: "common.sim.pause", onClick: toggleRun },
       { id: "sim.speed", label: "common.sim.time_scale", submenu: speedItems(null) },
       { id: "sim.sync", label: "menu.sim.sync", onClick: async () => {
-        try { await api("POST", "/api/simulation/clock", { set_time: new Date().toISOString() }); } catch (e) { toast(e.message); }
+        try { await api("POST", "/api/simulation", { set_time: new Date().toISOString() }); } catch (e) { toast(e.message); }
       } },
     ] },
     { id: "view", label: "common.menu.view", items: [
