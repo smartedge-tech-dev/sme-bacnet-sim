@@ -96,7 +96,8 @@ def test_export_warns_on_cell_limit():
     cfg = parse_text(SMALL)
     cfg.devices[0].description = "x" * 40000
     _, warnings = export_xlsx(cfg)
-    assert len(warnings) == 1 and "device 10: description" in warnings[0]
+    assert warnings == ["Devices row 3, column 'description': longer than 32767 characters (Excel cell limit), "
+                        "left out"]
 
 
 def _handwritten():
@@ -218,3 +219,34 @@ def test_network_blank_value_skipped_but_key_checked():
     with pytest.raises(XlsxImportError) as ei:
         import_xlsx(_wb_bytes(wb))
     assert len(ei.value.errors) == 1 and ei.value.errors[0].startswith("Network row 5, column 'key': unknown key")
+
+
+def test_schema_is_common_xlsx_schema():
+    from sme_sim_common.xlsx import XlsxSchema
+
+    from sme_bacnet_sim.xlsx import SCHEMA
+    assert isinstance(SCHEMA, XlsxSchema)
+    assert SCHEMA.sheets["StateTexts"].open_columns and SCHEMA.sheets["Network"].optional
+
+
+def test_export_product_warnings_come_first():
+    cfg = parse_text(SMALL)
+    cfg.devices[0].description = "x" * 40000
+    cfg.devices[0].objects[0].path = "nc1.txt"
+    _, warnings = export_xlsx(cfg)
+    assert len(warnings) == 2
+    assert warnings[0].startswith("device 10: notification-class NC1: file content is loaded from path 'nc1.txt'")
+    assert warnings[1].startswith("Devices row 3, column 'description'")
+
+
+def test_state_text_help_for_dynamic_columns():
+    cfg = parse_text(SMALL)
+    many = [f"S{i}" for i in range(1, 11)]
+    cfg.devices[0].objects[3].states = many
+    data, warnings = export_xlsx(cfg)
+    assert warnings == []
+    ws = load_workbook(io.BytesIO(data))["StateTexts"]
+    assert [c.value for c in ws[1]] == ["ref", *(f"text_{i}" for i in range(1, 11))]
+    assert ws.cell(2, 11).value == "状態 10 / 状态 10"
+    back, _ = import_xlsx(data)
+    assert back.devices[0].objects[3].states == many
