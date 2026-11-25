@@ -110,16 +110,18 @@ def paste_objects(dev: DeviceConfig, items: List[Dict[str, Any]]) -> Tuple[List[
             rejected.append({"name": orig, "reason": reason})
 
 
-def duplicate_hook(engine: Any, dev: Dict[str, Any], new_key: int, body: Dict[str, Any]) -> Dict[str, Any]:
+def duplicate_hook(engine: Any, dev: Dict[str, Any], new_key: int, body: Dict[str, Any], *,
+                   src_key: int) -> Dict[str, Any]:
     """sme-sim-common ``duplicate_hook`` for ``POST /api/devices/{device_id}/duplicate``: the copy is named
-    "Name (copy)"; its device id is the requested ``device_id`` or the common default (largest id + 1), moved past
-    the router's device id and wrapped to the lowest free id above ``MAX_DEVICE_ID``."""
+    "Name (copy)"; its device id is the requested ``device_id`` or, as in 0.4.0, the first free id after the source
+    (``src_key`` + 1, skipping the router's device id), wrapped to the lowest free id above ``MAX_DEVICE_ID``."""
     cfg = engine.config
     used = {d.device_id for d in cfg.devices}
     if cfg.network.router.device_id is not None:
         used.add(cfg.network.router.device_id)
     n = new_key
     if body.get("device_id") in (None, ""):
+        n = src_key + 1
         while n in used:
             n += 1
         if n > MAX_DEVICE_ID:

@@ -80,6 +80,19 @@ async def _flow():
         assert 2963 in engine.devices and len(engine.devices[2963].points) == len(engine.devices[2961].points)
         assert (await dup(2961))["device"]["name"] == "Src-Dev (copy 2)"
         assert await _status(dup(9999)) == 404
+        # 0.4.0 rule: first free id after the source (not largest + 1), skipping the router's device id,
+        # wrapped to the lowest free id above MAX_DEVICE_ID
+        assert (await http.delete("/api/devices/2963")).status_code == 200
+        r = await dup(2961)
+        assert r["name"] == 2963 and r["device"]["name"] == "Src-Dev (copy)"  # name freed by the delete
+        r = await http.post("/api/devices/2962/duplicate", json={"device_id": 4194195})
+        assert r.status_code == 200 and r.json()["name"] == 4194195
+        assert (await dup(4194195))["name"] == 4194197  # 4194196 is the router
+        r = await http.post("/api/devices/2962/duplicate", json={"device_id": 4194302})
+        assert r.status_code == 200
+        assert (await dup(4194302))["name"] == 0  # past MAX_DEVICE_ID: lowest free id
+        for k in (4194195, 4194197, 4194302, 0):
+            assert (await http.delete(f"/api/devices/{k}")).status_code == 200
 
         # ---- copy objects
         loop_cfg, temp_cfg = await cfg(2961, keys="loop:1,analog-input:1")

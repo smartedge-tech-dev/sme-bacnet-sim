@@ -73,7 +73,9 @@ def test_device_routes_int_key():
         r = client.post(f"/api/devices/{new}/duplicate")
         assert r.status_code == 200, r.text
         dup = r.json()
-        assert dup["name"] == max(ids | {new}) + 1 and dup["device"]["name"] == "New-Dev (copy)"
+        used = ids | {new}
+        first_free = next(i for i in range(new + 1, new + 10000) if i not in used)
+        assert dup["name"] == first_free and dup["device"]["name"] == "New-Dev (copy)"  # 0.4.0: first free after the source
         assert "device_id: %d" % new in client.get(f"/api/devices/{new}/config").text
         assert client.post("/api/devices", json={"device_id": new, "name": "X"}).status_code == 409
         assert client.delete(f"/api/devices/{dup['name']}").status_code == 200
