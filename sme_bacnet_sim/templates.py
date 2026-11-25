@@ -6,26 +6,45 @@ config file may reference a template and then add or override objects by name.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
+
+from sme_sim_common.templates import TemplateRegistry
 
 from .config import DeviceConfig, ObjectConfig
 
 Obj = Dict[str, Any]
-TEMPLATES: Dict[str, Dict[str, Any]] = {}
+
+
+def assign_instances(owner: str, objs: List[ObjectConfig]) -> List[ObjectConfig]:
+    """Finalize hook: auto-assign missing instance numbers per object type."""
+    used: Dict[str, set] = {}
+    for o in objs:
+        if o.instance is not None:
+            used.setdefault(o.type, set()).add(o.instance)
+    final = []
+    for o in objs:
+        if o.instance is None:
+            s = used.setdefault(o.type, set())
+            n = 1
+            while n in s:
+                n += 1
+            s.add(n)
+            o = o.model_copy(update={"instance": n})
+        final.append(o)
+    return final
+
+
+# Built-in templates (below) + user templates (--templates-dir, the environment variable or ~/.sme-bacnet-sim)
+REGISTRY: TemplateRegistry = TemplateRegistry(ObjectConfig, app_name="sme-bacnet-sim", items_attr="objects",
+                                              finalize_hook=assign_instances)
+TEMPLATES = REGISTRY.builtins  # built-in templates by name
+template = REGISTRY.template
 
 # daylight factor 0..1 peaking at 12:00 (uses sim-clock hour)
 DAYLIGHT = "max(0, sin(pi * (hour - 6) / 12))"
 # summer ambient of an unconditioned room / outdoor air: 27 C at 03:00 .. 33 C at 15:00
 AMBIENT = "30 + 3 * sin(2 * pi * (hour - 9) / 24)"
 AMBIENT_MAX = 33.0
-
-
-def template(name: str, title: str, params: Dict[str, Any]):
-    def deco(fn: Callable[[Dict[str, Any]], List[Obj]]):
-        TEMPLATES[name] = {"name": name, "title": title, "params": params, "build": fn}
-        return fn
-
-    return deco
 
 
 def _flag(v) -> bool:
@@ -205,40 +224,9 @@ def _custom(p):
 
 
 def expand_device(dev: DeviceConfig) -> List[ObjectConfig]:
-    """Template objects merged with the device's own objects (same name overrides)."""
-    objs: List[Obj] = []
-    if dev.template:
-        t = TEMPLATES.get(dev.template)
-        if t is None:
-            raise ValueError(f"{dev.name}: unknown template {dev.template!r} (known: {', '.join(TEMPLATES)})")
-        params = {**t["params"], **dev.params}
-        objs = t["build"](params)
-    result: Dict[str, ObjectConfig] = {o["name"]: ObjectConfig.model_validate(o) for o in objs}
-    for o in dev.objects:
-        if o.name in result:
-            merged = {**result[o.name].model_dump(exclude_none=True), **o.model_dump(exclude_unset=True)}
-            result[o.name] = ObjectConfig.model_validate(merged)
-        else:
-            result[o.name] = o
-    for name in dev.removed or []:  # objects deleted with DeleteObject
-        result.pop(name, None)
-    # auto-assign instance numbers per object type
-    used: Dict[str, set] = {}
-    for o in result.values():
-        if o.instance is not None:
-            used.setdefault(o.type, set()).add(o.instance)
-    final = []
-    for o in result.values():
-        if o.instance is None:
-            s = used.setdefault(o.type, set())
-            n = 1
-            while n in s:
-                n += 1
-            s.add(n)
-            o = o.model_copy(update={"instance": n})
-        final.append(o)
-    return final
+    """Template objects merged with the device's own objects (same name overrides), instances assigned."""
+    return REGISTRY.expand_device(dev)
 
 
 def template_catalog() -> List[Dict[str, Any]]:
-    return [{"name": t["name"], "title": t["title"], "params": t["params"]} for t in TEMPLATES.values()]
+    return REGISTRY.catalog()

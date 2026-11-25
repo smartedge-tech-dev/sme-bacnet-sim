@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from sme_bacnet_sim.config import NetworkConfig, load_file
 from sme_bacnet_sim.engine import Engine, detect_ip
 from sme_bacnet_sim.netsettings import (apply_network, check_ip, check_port_free, list_interfaces, parse_ifconfig,
-                                        replace_yaml_block, write_network_section)
+                                        write_network_section)
 
 CONFIG = """\
 # header comment
@@ -31,16 +31,6 @@ devices:
 """
 
 
-def test_replace_yaml_block_keeps_other_sections():
-    new = replace_yaml_block(CONFIG, "network", "network:\n  port: 1\n")
-    assert new.startswith("# header comment\nnetwork:\n  port: 1\n\n# simulation section\n")
-    assert "simulation: {tick_seconds: 0.1}   # fast" in new
-    assert yaml.safe_load(new)["network"] == {"port": 1}
-
-
-def test_replace_yaml_block_inserts_after_header():
-    new = replace_yaml_block("# hi\ndevices: []\n", "network", "network:\n  port: 1")
-    assert new == "# hi\nnetwork:\n  port: 1\n\ndevices: []\n"
 
 
 def test_write_network_section_yaml_and_json(tmp_path):
@@ -151,7 +141,7 @@ async def _rebind_and_save(tmp_path):
         res = await apply_network(engine, _net(engine, port=47941, network_number=5, mode="normal",
                                                foreign_device={"bbmd": f"{ip}:47808", "ttl": 120}))
         assert res["ok"] and engine.bind_address.endswith(":47941")
-        start = [e["text"] for e in engine.events if e["kind"] == "start"]
+        start = [e["message"] for e in engine.events if e["kind"] == "start"]
         assert "BBMD)" in start[-2] and f"network 5, foreign device of BBMD {ip}:47808 (TTL 120 s)" in start[-1]
         saved = load_file(path)
         assert saved.network.port == 47941 and saved.network.network_number == 5

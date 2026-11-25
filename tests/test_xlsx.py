@@ -166,7 +166,7 @@ def test_web_endpoints():
     engine = Engine(parse_text(SMALL))
     applied = []
 
-    async def fake_reload(cfg):
+    async def fake_reload(cfg, text=None):
         applied.append(cfg)
         engine.config = cfg
 
@@ -175,18 +175,18 @@ def test_web_endpoints():
     r = client.get("/api/config/xlsx-template")
     assert r.status_code == 200 and "spreadsheetml" in r.headers["content-type"]
     assert load_workbook(io.BytesIO(r.content)).sheetnames[0] == "Devices"
-    r = client.get("/api/config/export?format=xlsx")
+    r = client.get("/api/config/xlsx")
     assert r.status_code == 200 and "points.xlsx" in r.headers["content-disposition"]
     exported = r.content
     wb = _handwritten()
     wb["Points"].append(_row(1, "analog-input", 2, "U", units=99999))  # row 6: unknown unit code
     r = client.post("/api/config/import", files={"file": ("p.xlsx", _wb_bytes(wb))})
-    assert r.status_code == 400 and "Points row 6, column 'units'" in r.json()["detail"]
-    wb["Devices"].cell(1, 13, "note")  # unknown column -> warning, logged to the event log
+    assert r.status_code == 400 and "Points row 6, column 'units'" in "; ".join(r.json()["detail"]["errors"])
+    wb["Devices"].cell(1, 13, "note")  # unknown column -> warning in the response
     wb["Points"].delete_rows(6)
     r = client.post("/api/config/import", files={"file": ("p.xlsx", _wb_bytes(wb))})
     assert r.status_code == 200 and r.json()["warnings"] == ["Devices: unknown column 'note' ignored"]
-    assert "unknown column" in engine.events[-1]["text"]
+    assert "Excel workbook imported" in engine.events[-1]["message"]  # the warnings are in the response
     r = client.post("/api/config/import", files={"file": ("back.xlsx", exported)})
     assert r.status_code == 200
     assert applied[-1].model_dump(exclude_none=True) == parse_text(SMALL).model_dump(exclude_none=True)

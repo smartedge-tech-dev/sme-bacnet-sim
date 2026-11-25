@@ -33,8 +33,15 @@ devices:
 """
 
 
-def _ep(app, method, path):
+def _routes(app):
+    """All routes, including those of included routers (FastAPI >= 0.16x nests them in ``_IncludedRouter``)."""
     for r in app.routes:
+        sub = getattr(r, "original_router", None)
+        yield from (sub.routes if sub is not None else [r])
+
+
+def _ep(app, method, path):
+    for r in _routes(app):
         if getattr(r, "path", None) == path and method in getattr(r, "methods", ()):
             return r.endpoint
     raise LookupError(path)
@@ -95,7 +102,7 @@ async def _flow():
         assert {x["name"] for x in r["rejected"]} == {"TempLoop", "Limit"}
         assert any("Valve" in x["reason"] for x in r["rejected"])
         assert _objs(engine, 2962)["TempLog"].log_object == "Temp"
-        assert any("rejected" in e["text"] for e in engine.events)
+        assert any("rejected" in e["message"] for e in engine.events)
         # with its notification class the alarmed AV is accepted and points at the pasted NC
         objs = await cfg(2961, keys="notification-class:1,analog-value:1")
         r = await paste(2962, PasteReq(objects=objs))

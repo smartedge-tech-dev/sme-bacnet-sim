@@ -263,7 +263,7 @@ async def _cross():
         assert refs[2].deviceIdentifier == ObjectIdentifier("device,999999")
         assert refs[2].objectIdentifier == ObjectIdentifier("analog-value,5")
         assert sc.labels == ["Light", "SCH-B/Fan", "device 999999 analog-value:5 (external)"]
-        assert any("999999" in e["text"] and "not written" in e["text"] for e in engine.events)
+        assert any("999999" in e["message"] and "not written" in e["message"] for e in engine.events)
         assert light.read() == 0 and fan.read() == 0
         assert fan.obj.currentCommandPriority.unsigned == 9  # cross-device write at priority_for_writing
 

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
+from sme_sim_common.config import atomic_write_text, dump_yaml, replace_yaml_block
 
 from .config import NetworkConfig, SimConfig
 
@@ -172,7 +173,11 @@ async def apply_network(engine: Any, data: Dict[str, Any]) -> Dict[str, Any]:
     cur_ip, _, cur_port = engine.bind_address.rpartition(":")
     if (new_ip, str(net.port)) != (_host(cur_ip), cur_port):  # our own socket holds the current address
         check_port_free(new_ip, net.port)
-    await engine.reload(cfg)
+    try:  # keep the comments of the running config text; only the network block changes
+        text = replace_yaml_block(engine.config_text, "network", net.model_dump(exclude_none=True))
+    except ValueError:
+        text = None
+    await engine.reload(cfg, text)
     saved, save_error = None, None
     if engine.config_path:
         try:
@@ -180,35 +185,12 @@ async def apply_network(engine: Any, data: Dict[str, Any]) -> Dict[str, Any]:
             saved = engine.config_path
         except (OSError, ValueError, yaml.YAMLError) as e:
             save_error = str(e)
-    engine.log_event("config", f"network settings applied ({engine.bind_address})"
+    engine.log("config", f"network settings applied ({engine.bind_address})"
                      + (f", saved to {saved}" if saved else f", not saved: {save_error}" if save_error else ""))
     return {"ok": True, "bind": engine.bind_address, "saved": saved, "save_error": save_error}
 
 
 # ---------------------------------------------------------------- write-back
-
-
-def replace_yaml_block(text: str, key: str, block: str) -> str:
-    """Replace the top-level ``key:`` block of a YAML document (or insert it after the leading comments).
-
-    Indented lines and comments inside the block are replaced; column-0 comments / blank lines right before the
-    next top-level key are left to that key."""
-    if not block.endswith("\n"):
-        block += "\n"
-    lines = text.splitlines(keepends=True)
-    start = next((i for i, ln in enumerate(lines) if re.match(rf"{re.escape(key)}\s*:", ln)), None)
-    if start is None:
-        i = 0
-        while i < len(lines) and (not lines[i].strip() or lines[i].startswith("#")):
-            i += 1
-        return "".join(lines[:i]) + block + ("\n" if i < len(lines) else "") + "".join(lines[i:])
-    end = start + 1
-    while end < len(lines) and not re.match(r"[^\s#]", lines[end]):
-        end += 1
-    if end < len(lines):  # keep the comment header of the next section
-        while end - 1 > start and (not lines[end - 1].strip() or lines[end - 1].startswith("#")):
-            end -= 1
-    return "".join(lines[:start]) + block + "".join(lines[end:])
 
 
 def write_network_section(path: Union[str, Path], net: NetworkConfig) -> None:
@@ -219,18 +201,7 @@ def write_network_section(path: Union[str, Path], net: NetworkConfig) -> None:
     if p.suffix.lower() == ".json":
         doc = json.loads(text) if text.strip() else {}
         doc["network"] = data
-        p.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        atomic_write_text(p, json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
         return
-    old: Optional[Dict[str, Any]] = yaml.safe_load(text) if text.strip() else {}
-    if not isinstance(old, dict):
-        raise ValueError(f"{p}: not a YAML mapping")
-    want = {**old, "network": data}
-    new = replace_yaml_block(text, "network",
-                             yaml.safe_dump({"network": data}, allow_unicode=True, sort_keys=False))
-    try:
-        ok = yaml.safe_load(new) == want
-    except yaml.YAMLError:
-        ok = False
-    if not ok:  # unusual layout (e.g. anchors, flow style at top level): rewrite the document without comments
-        new = yaml.safe_dump(want, allow_unicode=True, sort_keys=False)
-    p.write_text(new, encoding="utf-8")
+    new = replace_yaml_block(text, "network", data) if text.strip() else dump_yaml({"network": data})
+    atomic_write_text(p, new)

@@ -55,6 +55,7 @@ from . import __version__
 
 from . import __version__
 from .behaviors import Behavior, ident, make_behavior
+from .config import dump_yaml
 from .config import (
     ACCUMULATOR, ANALOG_TYPES, BINARY_TYPES, CALENDAR, CONTROL_TYPES, INPUT_TYPES, LOOP, MULTISTATE_TYPES,
     EVENT_ENROLLMENT, FILE, LIFE_SAFETY_TYPES, NOTIFICATION_CLASS, PROGRAM, SPECIAL_TYPES, PULSE_CONVERTER, REAL_TYPES,
@@ -421,7 +422,7 @@ class SimApplication(Application):
                                       apdu.propertyValue)
         await super().do_WritePropertyRequest(apdu)
         self.engine.alarm_written(self.sim_device_id, [apdu.objectIdentifier])
-        self.engine.log_event(
+        self.engine.log(
             "bacnet-write",
             f"WriteProperty from {apdu.pduSource} -> device {self.sim_device_id} "
             f"{apdu.objectIdentifier[0]},{apdu.objectIdentifier[1]} {apdu.propertyIdentifier}"
@@ -490,7 +491,7 @@ class SimApplication(Application):
         self._validate_wpm(apdu)  # all or nothing for everything checkable up front (see _validate_wpm)
         await super().do_WritePropertyMultipleRequest(apdu)
         self.engine.alarm_written(self.sim_device_id, [s.objectIdentifier for s in apdu.listOfWriteAccessSpecifications])
-        self.engine.log_event("bacnet-write", f"WritePropertyMultiple from {apdu.pduSource} -> device {self.sim_device_id}")
+        self.engine.log("bacnet-write", f"WritePropertyMultiple from {apdu.pduSource} -> device {self.sim_device_id}")
         self.engine.request_scan()
 
     async def do_AtomicReadFileRequest(self, apdu) -> None:
@@ -683,7 +684,7 @@ class SimApplication(Application):
             self.__dict__["_dcc_handle"] = asyncio.get_running_loop().call_later(
                 minutes * 60, self.set_comm, "enable", None, "time duration expired")
         if was != state or source:
-            self.engine.log_event("dcc", f"device {self.sim_device_id}: communication {state}"
+            self.engine.log("dcc", f"device {self.sim_device_id}: communication {state}"
                                   + (f" for {minutes} min" if state != "enable" and minutes else "")
                                   + (f" ({source})" if source else ""))
             self.engine.publish({"type": "reload"})
@@ -691,7 +692,7 @@ class SimApplication(Application):
     async def do_DeviceCommunicationControlRequest(self, apdu) -> None:
         pw = self.engine.devices[self.sim_device_id].cfg.dcc_password
         if pw and str(apdu.password or "") != pw:
-            self.engine.log_event("dcc", f"device {self.sim_device_id}: DeviceCommunicationControl from "
+            self.engine.log("dcc", f"device {self.sim_device_id}: DeviceCommunicationControl from "
                                          f"{apdu.pduSource} rejected (password failure)")
             raise ExecutionError(errorClass="security", errorCode="passwordFailure")
         await self.response(SimpleAckPDU(context=apdu))
@@ -704,7 +705,7 @@ class SimApplication(Application):
         pw = self.engine.devices[self.sim_device_id].cfg.reinit_password
         src = f"ReinitializeDevice from {apdu.pduSource}"
         if pw and str(apdu.password or "") != pw:
-            self.engine.log_event("reinit", f"device {self.sim_device_id}: {src} rejected (password failure)")
+            self.engine.log("reinit", f"device {self.sim_device_id}: {src} rejected (password failure)")
             raise ExecutionError(errorClass="security", errorCode="passwordFailure")
         state = str(apdu.reinitializedStateOfDevice)
         if state not in ("coldstart", "warmstart"):
@@ -786,9 +787,11 @@ class DeviceRuntime:
 
 
 class Engine:
-    def __init__(self, config: SimConfig, config_path: Optional[str] = None):
+    def __init__(self, config: SimConfig, config_path: Optional[str] = None, config_text: Optional[str] = None):
         self.config = config
         self.config_path = config_path
+        # YAML text of the running config (GET /api/config, POST /api/config/save write it back verbatim)
+        self.config_text = config_text if config_text is not None else dump_yaml(config)
         self.devices: Dict[int, DeviceRuntime] = {}
         self.router_app: Optional[Application] = None
         self.bind_address: str = ""
@@ -825,12 +828,19 @@ class Engine:
             except asyncio.QueueFull:
                 pass
 
-    def log_event(self, kind: str, text: str) -> None:
+    def log_event(self, level: str, message: str, **fields: Any) -> Dict[str, Any]:
+        """Append an event (sme-sim-common EngineProtocol signature); BACnet categories travel in ``kind``."""
         self._event_seq = getattr(self, "_event_seq", 0) + 1  # lets /ws skip events already in a snapshot
-        ev = {"t": time.time(), "kind": kind, "text": text, "seq": self._event_seq}
+        ev = {"t": time.time(), "seq": self._event_seq, "level": level, "message": message, **fields}
         self.events.append(ev)
-        log.info("%s: %s", kind, text)
+        (log.error if level == "error" else log.warning if level == "warning" else log.info)(
+            "%s: %s", fields.get("kind", level), message)
         self.publish({"type": "log", "event": ev})
+        return ev
+
+    def log(self, kind: str, text: str) -> Dict[str, Any]:
+        """Log a BACnet event of category ``kind`` (alarm, bacnet-write, config, error ...)."""
+        return self.log_event("error" if kind == "error" else "info", text, kind=kind)
 
     def request_scan(self) -> None:
         self._scan.set()
@@ -980,7 +990,7 @@ class Engine:
             self._run_schedules(rt)  # initial scheduled values at the current simulated time
             for sc in rt.schedules:
                 for ext in sc.external:
-                    self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name}: target {ext} is not part of this "
+                    self.log("schedule", f"{rt.cfg.name}/{sc.cfg.name}: target {ext} is not part of this "
                                                f"simulator; not written")
         if net.mode == "bbmd":
             mode = ", BBMD"
@@ -988,7 +998,7 @@ class Engine:
             mode = f", foreign device of BBMD {net.foreign_device.bbmd} (TTL {net.foreign_device.ttl} s)"
         else:
             mode = ""
-        self.log_event(
+        self.log(
             "start",
             f"BACnet/IP {self.bind_address} (router device {net.router.device_id}, network {net.network_number}"
             f"{mode}), {len(runtimes)} device(s) on virtual network {net.virtual_network}",
@@ -1012,7 +1022,7 @@ class Engine:
         code = link.bbmdRegistrationStatus  # -2 unregistered, -1 in process, 0 OK, >0 BVLC result code
         if code == -2 and link.bbmdAddress is not None:
             # registration expired (no renewal answer within TTL + 30 s): start over
-            self.log_event("foreign", f"FD registration with {fd['bbmd']} expired; re-registering")
+            self.log("foreign", f"FD registration with {fd['bbmd']} expired; re-registering")
             self._restart_foreign(link)
             code = -1
             self._fd_since = loop_time
@@ -1024,17 +1034,17 @@ class Engine:
             self._fd_code = code
             if code == 0:
                 fd.update(status="ok", result_code=0)
-                self.log_event("foreign", f"registered as foreign device with BBMD {fd['bbmd']} (TTL {fd['ttl']} s)")
+                self.log("foreign", f"registered as foreign device with BBMD {fd['bbmd']} (TTL {fd['ttl']} s)")
             elif code > 0:
                 fd.update(status="nak", result_code=code)
                 self._fd_since = loop_time
-                self.log_event("foreign", f"BBMD {fd['bbmd']} rejected the registration (NAK 0x{code:04X}); retrying")
+                self.log("foreign", f"BBMD {fd['bbmd']} rejected the registration (NAK 0x{code:04X}); retrying")
             elif code == -1:
                 fd.update(status="registering")
                 self._fd_since = loop_time
         if code == -1 and fd["status"] == "registering" and loop_time - self._fd_since > FD_TIMEOUT:
             fd.update(status="timeout")
-            self.log_event("foreign", f"no answer from BBMD {fd['bbmd']} within {FD_TIMEOUT:.0f} s; retrying")
+            self.log("foreign", f"no answer from BBMD {fd['bbmd']} within {FD_TIMEOUT:.0f} s; retrying")
         if fd["status"] != before:
             self.publish({"type": "network", "foreign_device": dict(fd)})
 
@@ -1052,7 +1062,7 @@ class Engine:
             link.unregister()  # sends Register-Foreign-Device with TTL 0 and cancels renewals
             await asyncio.sleep(0.1)  # let the request go out before the socket closes
             if self.foreign is not None:
-                self.log_event("foreign", f"unregistered from BBMD {self.foreign['bbmd']}")
+                self.log("foreign", f"unregistered from BBMD {self.foreign['bbmd']}")
         elif link is not None:
             link._stop_tracking_registration()
 
@@ -1065,7 +1075,7 @@ class Engine:
         self.router_app = None
         self.devices = {}
 
-    async def reload(self, config: SimConfig) -> None:
+    async def reload(self, config: SimConfig, text: Optional[str] = None) -> None:
         runtimes = self._prepare(config)  # validate before touching the running stack
         async with self._lock:
             old = self.config
@@ -1075,11 +1085,12 @@ class Engine:
             try:
                 self._build(config, runtimes)
             except Exception as e:
-                self.log_event("error", f"reload failed, restoring previous config: {e}")
+                self.log("error", f"reload failed, restoring previous config: {e}")
                 self._teardown()
                 await asyncio.sleep(0.3)
                 self._build(old, self._prepare(old))
                 raise
+            self.config_text = text if text is not None else dump_yaml(config)
         self.publish({"type": "reload"})
 
     async def stop(self) -> None:
@@ -1121,7 +1132,7 @@ class Engine:
             if only_dirty and not sc.obj._dirty:
                 continue
             if sc.evaluate(ts) and sc.targets:
-                self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name} = {sc.text(sc.current)} -> "
+                self.log("schedule", f"{rt.cfg.name}/{sc.cfg.name} = {sc.text(sc.current)} -> "
                                f"{', '.join(sc.labels)} @priority {sc.priority}")
 
     def step(self, dt: float) -> None:
@@ -1145,7 +1156,7 @@ class Engine:
                     msg = f"{type(e).__name__}: {e}"
                     if p.error != msg:
                         p.error = msg
-                        self.log_event("error", f"{rt.cfg.name}/{p.cfg.name}: {msg}")
+                        self.log("error", f"{rt.cfg.name}/{p.cfg.name}: {msg}")
             for c in rt.controls:
                 p = c.point
                 try:
@@ -1155,7 +1166,7 @@ class Engine:
                     msg = f"{type(e).__name__}: {e}"
                     if p.error != msg:
                         p.error = msg
-                        self.log_event("error", f"{rt.cfg.name}/{p.cfg.name}: {msg}")
+                        self.log("error", f"{rt.cfg.name}/{p.cfg.name}: {msg}")
             for ls in rt.lifesafety:
                 try:
                     ls.step(dt)
@@ -1223,7 +1234,7 @@ class Engine:
             if tr is None:
                 continue
             frm, to = tr
-            self.log_event("alarm", f"{rt.cfg.name}/{a.point.cfg.name}: {frm} -> {to} (priority {a.priority(to)}"
+            self.log("alarm", f"{rt.cfg.name}/{a.point.cfg.name}: {frm} -> {to} (priority {a.priority(to)}"
                            + (", ack required)" if a.unacked else ")"))
             idx = transition_index(to)
             if not a.event_enable[idx]:
@@ -1266,7 +1277,7 @@ class Engine:
         except Exception as e:  # recipient unreachable etc.: keep running, surface it in the event log
             if r.cfg.device is not None:
                 self._dev_addr.pop(r.cfg.device, None)  # re-resolve next time
-            self.log_event("error", f"{rt.cfg.name}/{a.point.cfg.name}: event notification to {r.label()} "
+            self.log("error", f"{rt.cfg.name}/{a.point.cfg.name}: event notification to {r.label()} "
                                     f"failed: {type(e).__name__}: {e}")
 
     @staticmethod
@@ -1297,7 +1308,7 @@ class Engine:
         if ts is not None and ts._choice == "datetime" and str(ts) != str(timestamp(a.timestamps[idx])):
             raise ExecutionError(errorClass="services", errorCode="invalidTimeStamp")
         changed = a.acknowledge(idx)
-        self.log_event("alarm-ack", f"device {device_id} {a.point.cfg.name}: {state} acknowledged by "
+        self.log("alarm-ack", f"device {device_id} {a.point.cfg.name}: {state} acknowledged by "
                                     f"{apdu.acknowledgmentSource!s} ({apdu.pduSource})"
                                     + ("" if changed else " (already acknowledged)"))
         self.request_scan()
@@ -1311,7 +1322,7 @@ class Engine:
             raise ValueError(f"{p.cfg.name} has no alarm")
         names = ["to-offnormal", "to-fault", "to-normal"]
         done = [names[i] for i in range(3) if p.alarm.acknowledge(i)]
-        self.log_event("alarm-ack", f"device {device_id} {p.cfg.name}: {', '.join(done) or 'nothing'} "
+        self.log("alarm-ack", f"device {device_id} {p.cfg.name}: {', '.join(done) or 'nothing'} "
                                     f"acknowledged (web UI)")
         self.request_scan()
 
@@ -1425,7 +1436,7 @@ class Engine:
                     o = next((o for o in rt.cfg.objects if o.name == z.cfg.name), None)
                     if o is not None and o is not z.cfg:
                         o.zone_members = names
-                    self.log_event("life-safety", f"{rt.cfg.name}/{z.cfg.name}: zone members = {names}")
+                    self.log("life-safety", f"{rt.cfg.name}/{z.cfg.name}: zone members = {names}")
                 self._eval_life_safety(rt)
         for oid in oids:
             p = self._owner(rt, f"{ObjectType(oid[0])}:{oid[1]}")
@@ -1438,12 +1449,12 @@ class Engine:
                 nc = next((x for x in rt.ncs if x.number == n), None)
                 if nc is None:  # WritePropertyMultiple bypasses check_alarm_write
                     p.obj.notificationClass = a.nc.number
-                    self.log_event("error", f"{rt.cfg.name}/{p.cfg.name}: notification-class {n} does not exist")
+                    self.log("error", f"{rt.cfg.name}/{p.cfg.name}: notification-class {n} does not exist")
                 else:
                     a.nc, nc_ref = nc, nc.cfg.name
             changed, err = a.sync_from_object(nc_ref)
             if err:
-                self.log_event("error", f"{rt.cfg.name}/{p.cfg.name}: alarm property write rejected: {err}")
+                self.log("error", f"{rt.cfg.name}/{p.cfg.name}: alarm property write rejected: {err}")
             if not changed:
                 continue
             if isinstance(p, EventEnrollment):  # the alarm config is the object config itself
@@ -1452,7 +1463,7 @@ class Engine:
                     rt.cfg.objects.append(p.cfg)
                 else:
                     rt.cfg.objects[i] = p.cfg  # persisted by Save / Export
-                self.log_event("alarm", f"{rt.cfg.name}/{p.cfg.name}: event enrollment updated by BACnet write")
+                self.log("alarm", f"{rt.cfg.name}/{p.cfg.name}: event enrollment updated by BACnet write")
                 continue
             p.cfg = p.cfg.model_copy(update={"alarm": a.cfg})
             o = next((o for o in rt.cfg.objects if o.name == p.cfg.name), None)
@@ -1460,7 +1471,7 @@ class Engine:
                 rt.cfg.objects.append(ObjectConfig(type=p.cfg.type, name=p.cfg.name, alarm=a.cfg))
             else:
                 o.alarm = a.cfg  # persisted by Save / Export
-            self.log_event("alarm", f"{rt.cfg.name}/{p.cfg.name}: alarm properties updated by BACnet write")
+            self.log("alarm", f"{rt.cfg.name}/{p.cfg.name}: alarm properties updated by BACnet write")
 
     def _sync_recipients(self, rt: DeviceRuntime, n: NotificationClass) -> None:
         """Notification class Recipient_List (BACnetDestination list) -> runtime recipients and config."""
@@ -1491,10 +1502,10 @@ class Engine:
                 cfgs.append(RecipientConfig(**kw))
             n.recipients = [NCRecipient(c, net) for c in cfgs]
         except Exception as e:
-            self.log_event("error", f"{rt.cfg.name}/{n.cfg.name}: recipient list not taken over: {e}")
+            self.log("error", f"{rt.cfg.name}/{n.cfg.name}: recipient list not taken over: {e}")
             return
         self._persist(rt, n.cfg, recipients=cfgs)
-        self.log_event("alarm", f"{rt.cfg.name}/{n.cfg.name}: recipient list updated ({len(cfgs)} recipient(s))")
+        self.log("alarm", f"{rt.cfg.name}/{n.cfg.name}: recipient list updated ({len(cfgs)} recipient(s))")
 
     @staticmethod
     def _persist(rt: DeviceRuntime, cfg: ObjectConfig, **fields: Any) -> None:
@@ -1518,12 +1529,12 @@ class Engine:
             for i, d in enumerate(dates):
                 parse_calendar_entry(d, f"dates[{i}]")
         except Exception as e:
-            self.log_event("error", f"{rt.cfg.name}/{c.cfg.name}: date list not kept in the config: {e}")
+            self.log("error", f"{rt.cfg.name}/{c.cfg.name}: date list not kept in the config: {e}")
             return
         if dates == list(c.cfg.dates or []):
             return
         self._persist(rt, c.cfg, dates=dates)
-        self.log_event("schedule", f"{rt.cfg.name}/{c.cfg.name}: date list updated ({len(dates)} entries)")
+        self.log("schedule", f"{rt.cfg.name}/{c.cfg.name}: date list updated ({len(dates)} entries)")
 
     def _schedule_targets(self, rt: DeviceRuntime, sc: Schedule, refs: Any) -> Tuple[List[Any], List[Any],
                                                                                     List[str], List[str]]:
@@ -1548,7 +1559,7 @@ class Engine:
         try:
             self._schedule_targets(rt, sc, refs)
         except ValueError as e:
-            self.log_event("error", f"list-of-object-property-references rejected: {e}")
+            self.log("error", f"list-of-object-property-references rejected: {e}")
             raise ExecutionError(errorClass="property", errorCode="valueOutOfRange")
 
     def _sync_schedule_targets(self, rt: DeviceRuntime, sc: Schedule) -> None:
@@ -1558,13 +1569,13 @@ class Engine:
         except ValueError as e:  # WritePropertyMultiple skips check_schedule_refs: restore the configured targets
             sc.obj.listOfObjectPropertyReferences = resolve_targets(rt.cfg, sc.cfg.targets, rt.points,
                                                                     self.devices.values(), sc.cfg.name)[3]
-            self.log_event("error", f"{e}; targets unchanged")
+            self.log("error", f"{e}; targets unchanged")
             return
         if [id(p) for p in targets] == [id(p) for p in sc.targets] and external == sc.external:
             return
         sc.targets, sc.labels, sc.external = targets, labels, external
         self._persist(rt, sc.cfg, targets=entries)
-        self.log_event("schedule", f"{rt.cfg.name}/{sc.cfg.name}: targets = {', '.join(labels) or 'none'}")
+        self.log("schedule", f"{rt.cfg.name}/{sc.cfg.name}: targets = {', '.join(labels) or 'none'}")
 
     def _sync_schedule_content(self, rt: DeviceRuntime, sc: Schedule) -> None:
         """Weekly_Schedule / Exception_Schedule / Schedule_Default written by a client -> config ``weekly`` /
@@ -1582,11 +1593,11 @@ class Engine:
             oc = ObjectConfig.model_validate({**sc.cfg.model_dump(exclude_none=True), **new})
             build_schedule(rt.cfg, oc, rt.points, rt.calendars, self.devices.values())
         except Exception as e:
-            self.log_event("error", f"{where}: schedule content not kept in the config: {e}")
+            self.log("error", f"{where}: schedule content not kept in the config: {e}")
             return
         sc.saved = new
         self._persist(rt, sc.cfg, **changed)
-        self.log_event("schedule", f"{where}: {', '.join(changed)} updated by BACnet write")
+        self.log("schedule", f"{where}: {', '.join(changed)} updated by BACnet write")
 
     # ---- life safety (see sme_bacnet_sim/lifesafety.py)
 
@@ -1622,7 +1633,7 @@ class Engine:
                 ls.update(rt.lifesafety)
             ls.operate(op)
         self._eval_life_safety(rt)
-        self.log_event("life-safety", f"LifeSafetyOperation {op} from {apdu.pduSource} "
+        self.log("life-safety", f"LifeSafetyOperation {op} from {apdu.pduSource} "
                                       f"({apdu.requestingSource}, process {int(apdu.requestingProcessIdentifier)}) "
                                       f"-> device {device_id} {', '.join(x.cfg.name for x in targets) or '(none)'}")
         self.request_scan()
@@ -1637,7 +1648,7 @@ class Engine:
             raise ValueError("the tracking value of a zone follows its members")
         ls.set_tracking(state)
         self._eval_life_safety(rt)
-        self.log_event("ui-write", f"device {device_id} {ls.cfg.name} tracking-value = {ls.tracking}")
+        self.log("ui-write", f"device {device_id} {ls.cfg.name} tracking-value = {ls.tracking}")
         self.request_scan()
 
     # ---- text messages / private transfer
@@ -1646,7 +1657,7 @@ class Engine:
         src = apdu.textMessageSourceDevice
         mc = to_json(apdu.messageClass) if apdu.messageClass is not None else None
         cls = f", class {next(iter(mc.values()))}" if isinstance(mc, dict) and mc else ""
-        self.log_event("text-message", f"{'Confirmed' if confirmed else 'Unconfirmed'}TextMessage from "
+        self.log("text-message", f"{'Confirmed' if confirmed else 'Unconfirmed'}TextMessage from "
                                        f"{apdu.pduSource} (device {src[1]}) -> device {device_id} "
                                        f"[{apdu.messagePriority}{cls}]: {apdu.message}")
 
@@ -1676,7 +1687,7 @@ class Engine:
         fut = rt.app.request(req)
         if confirmed:
             await asyncio.wait_for(fut, 10)
-        self.log_event("text-message", f"device {device_id} sent {'Confirmed' if confirmed else 'Unconfirmed'}"
+        self.log("text-message", f"device {device_id} sent {'Confirmed' if confirmed else 'Unconfirmed'}"
                                        f"TextMessage to {shown} [{priority}]: {message}")
         return shown
 
@@ -1686,7 +1697,7 @@ class Engine:
         match = next((x for x in rt.cfg.private_transfer or [] if x.vendor_id == vid and x.service_number == num),
                      None)
         kind = "Confirmed" if confirmed else "Unconfirmed"
-        self.log_event("private-transfer", f"{kind}PrivateTransfer from {apdu.pduSource} -> device {device_id} "
+        self.log("private-transfer", f"{kind}PrivateTransfer from {apdu.pduSource} -> device {device_id} "
                                            f"vendor {vid} service {num}"
                                            + (" with parameters" if apdu.serviceParameters is not None else "")
                                            + ("" if not confirmed else " (answered)" if match else " (not supported)"))
@@ -1759,7 +1770,7 @@ class Engine:
             except (ExecutionError, PropertyError) as e:
                 raise CreateError(str(e.errorClass), str(e.errorCode))
             self.alarm_written(device_id, [obj.objectIdentifier])
-        self.log_event("bacnet-write", f"{'AddListElement' if add else 'RemoveListElement'} from {apdu.pduSource} "
+        self.log("bacnet-write", f"{'AddListElement' if add else 'RemoveListElement'} from {apdu.pduSource} "
                                        f"-> device {device_id} {oid[0]},{oid[1]} {prop}: {len(elements)} element(s), "
                                        f"list now {len(new)}")
         self.request_scan()
@@ -1785,7 +1796,7 @@ class Engine:
             else:
                 note = ""
             p.obj.presentValue = v
-        self.log_event("ui-write", f"device {device_id} {p.cfg.name} = {value}{note}")
+        self.log("ui-write", f"device {device_id} {p.cfg.name} = {value}{note}")
         self.request_scan()
 
     async def relinquish(self, device_id: int, key: str, priority: Optional[int] = None) -> None:
@@ -1795,13 +1806,13 @@ class Engine:
         if priority is None:
             priority = p.obj.currentCommandPriority.unsigned or 16
         await p.obj.write_property("presentValue", Null(()), priority=priority)
-        self.log_event("ui-write", f"device {device_id} {p.cfg.name} relinquish @priority {priority}")
+        self.log("ui-write", f"device {device_id} {p.cfg.name} relinquish @priority {priority}")
         self.request_scan()
 
     def set_oos(self, device_id: int, key: str, oos: bool) -> None:
         p = self.point(device_id, key)
         p.obj.outOfService = bool(oos)
-        self.log_event("ui-write", f"device {device_id} {p.cfg.name} out-of-service = {bool(oos)}")
+        self.log("ui-write", f"device {device_id} {p.cfg.name} out-of-service = {bool(oos)}")
         self.request_scan()
 
     def trendlog(self, device_id: int, instance: int) -> TrendLog:
@@ -1830,14 +1841,14 @@ class Engine:
             o = next((o for o in self.devices[device_id].cfg.objects if o.name == f.cfg.name), None)
             if o is not None and o is not f.cfg:
                 o.content = f.cfg.content
-        self.log_event("bacnet-write", f"AtomicWriteFile from {apdu.pduSource} -> device {device_id} "
+        self.log("bacnet-write", f"AtomicWriteFile from {apdu.pduSource} -> device {device_id} "
                                        f"{f.cfg.name} ({int(f.obj.fileSize)} bytes)")
         self.request_scan()
         return ack
 
     def _program_moved(self, pg: SimProgram, moved: Any, source: str) -> None:
         if moved is not None:
-            self.log_event("program", f"{source}: device {pg.device_id} {pg.cfg.name} {moved[0]} -> {moved[1]}")
+            self.log("program", f"{source}: device {pg.device_id} {pg.cfg.name} {moved[0]} -> {moved[1]}")
             self.request_scan()
 
     def program_change(self, device_id: int, instance: int, request: str, source: str = "UI") -> None:
@@ -1850,7 +1861,7 @@ class Engine:
     def set_trendlog_enable(self, device_id: int, instance: int, enabled: bool) -> None:
         tl = self.trendlog(device_id, instance)
         tl.obj.enable = bool(enabled)
-        self.log_event("ui-write", f"device {device_id} {tl.cfg.name} enable = {bool(enabled)}")
+        self.log("ui-write", f"device {device_id} {tl.cfg.name} enable = {bool(enabled)}")
         self.request_scan()
 
     def set_simulation(self, running: Optional[bool] = None, time_scale: Optional[float] = None) -> None:
@@ -1861,6 +1872,18 @@ class Engine:
             sim.time_scale = time_scale
         self.publish({"type": "sim", "running": sim.running, "time_scale": sim.time_scale})
 
+    def set_running(self, running: Optional[bool] = None, time_scale: Optional[float] = None) -> None:
+        """sme-sim-common ``POST /api/simulation`` hook."""
+        self.set_simulation(running, time_scale)
+
+    @property
+    def running(self) -> bool:
+        return self.config.simulation.running
+
+    @property
+    def time_scale(self) -> float:
+        return self.config.simulation.time_scale
+
     def set_clock(self, ts: float, source: str) -> None:
         """Move the simulated clock so that sim_epoch + sim_time == ts (sim_time stays monotonic)."""
         now = time.monotonic()
@@ -1870,7 +1893,7 @@ class Engine:
         for rt in self.devices.values():
             self._run_schedules(rt)
         if last is None or last[0] != round(ts, 1) or now - last[1] > 1.0:  # a broadcast reaches every device
-            self.log_event("time-sync", f"{source}: simulated clock set to "
+            self.log("time-sync", f"{source}: simulated clock set to "
                                         f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(ts))}")
         sim = self.config.simulation
         self.publish({"type": "sim", "running": sim.running, "time_scale": sim.time_scale, "sim_hour": self.sim_hour})
@@ -1936,7 +1959,7 @@ class Engine:
         except (ExecutionError, PropertyError) as e:
             raise ValueError(f"{prop}: {getattr(e, 'errorCode', e)}") from e
         self.alarm_written(device_id, [obj.objectIdentifier])
-        self.log_event("ui-write", f"device {device_id} {key} {prop} = {value}"
+        self.log("ui-write", f"device {device_id} {key} {prop} = {value}"
                        + (f" @priority {priority}" if priority else ""))
         self.request_scan()
 
@@ -1975,7 +1998,7 @@ class Engine:
         dev.objects.append(oc)  # persisted by Save / Export
         if dev.removed and name in dev.removed:
             dev.removed.remove(name)
-        self.log_event("bacnet-create", f"{source}: device {device_id} created {t},{instance} {name!r}")
+        self.log("bacnet-create", f"{source}: device {device_id} created {t},{instance} {name!r}")
         self.publish({"type": "reload"})
         return (t, instance)
 
@@ -1991,7 +2014,7 @@ class Engine:
             [c.point.cfg.name for c in rt.controls if p in c.refs] + \
             [e.cfg.name for e in rt.ees if e.target is p]
         if p is None or refs:  # device, network port, trend log, schedule, calendar, notification class, referenced
-            self.log_event("bacnet-delete", f"{source}: device {device_id} {oid[0]},{oid[1]} not deleted"
+            self.log("bacnet-delete", f"{source}: device {device_id} {oid[0]},{oid[1]} not deleted"
                                             + (f" (referenced by {', '.join(refs)})" if refs else ""))
             raise ExecutionError(errorClass="object", errorCode="objectDeletionNotPermitted")
         rt.app.drop_object(obj)
@@ -2006,7 +2029,7 @@ class Engine:
         dev.objects[:] = [o for o in dev.objects if o.name != p.cfg.name]
         if any(o.name == p.cfg.name for o in expand_device(dev)):  # still provided by the template
             dev.removed = [*(dev.removed or []), p.cfg.name]
-        self.log_event("bacnet-delete", f"{source}: device {device_id} deleted {p.key} {p.cfg.name!r}")
+        self.log("bacnet-delete", f"{source}: device {device_id} deleted {p.key} {p.cfg.name!r}")
         self.publish({"type": "reload"})
 
     async def reinitialize(self, device_id: int, cold: bool, source: str) -> None:
@@ -2049,7 +2072,7 @@ class Engine:
             ls.reset_to_config()
         self._eval_life_safety(rt)
         rt.app.set_comm("enable")  # a restart ends DeviceCommunicationControl
-        self.log_event("reinit", f"{source}: device {device_id} {'coldstart' if cold else 'warmstart'}")
+        self.log("reinit", f"{source}: device {device_id} {'coldstart' if cold else 'warmstart'}")
         self.request_scan()
         self.publish({"type": "reload"})
 

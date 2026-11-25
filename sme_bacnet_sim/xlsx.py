@@ -522,3 +522,33 @@ def import_xlsx(data: bytes, base: Optional[SimConfig] = None) -> Tuple[SimConfi
     except ValidationError as e:
         raise XlsxImportError([f"Devices / Network: {err['msg']}" for err in e.errors()]) from None
     return cfg, warnings
+
+
+class _WorkbookSchema:
+    """The BACnet workbook behind sme-sim-common's xlsx routes (``GET /api/config/xlsx``, ``.../xlsx-template``,
+    ``POST /api/config/import``): the part of :class:`sme_sim_common.xlsx.XlsxSchema` that ``make_base_app`` uses.
+    TODO: port the sheet definitions to ``XlsxSchema`` (StateTexts with dynamic columns, key/value Network sheet)."""
+
+    template_file = TEMPLATE_FILE
+    export_file = EXPORT_FILE
+
+    @staticmethod
+    def blank_template() -> bytes:
+        return blank_template()
+
+    @staticmethod
+    def export_xlsx(cfg: SimConfig) -> Tuple[bytes, List[str]]:
+        return export_xlsx(cfg)
+
+    @staticmethod
+    def import_xlsx(data: bytes, base: Optional[SimConfig] = None) -> Tuple[Optional[SimConfig], List[str]]:
+        """``(config, warnings)``, or ``(None, errors)`` when the workbook is rejected."""
+        try:
+            return import_xlsx(data, base)
+        except XlsxImportError as e:
+            return None, list(e.errors)
+        except ValueError as e:
+            return None, [str(e)]
+
+
+SCHEMA = _WorkbookSchema()

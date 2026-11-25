@@ -65,7 +65,7 @@ async def _call(coro, timeout=5.0):
 
 
 def _events(engine, kind):
-    return [e["text"] for e in engine.events if e["kind"] == kind]
+    return [e["message"] for e in engine.events if e["kind"] == kind]
 
 
 def test_config_errors():

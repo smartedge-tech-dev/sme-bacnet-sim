@@ -229,16 +229,26 @@ class _Sock:
     async def send_json(self, m):
         self.msgs.append(m)
 
+    async def receive(self):  # the client never sends; the common /ws reads until disconnect
+        await asyncio.Event().wait()
+
 
 def test_paste_logged_once():
     asyncio.run(_paste_once())
 
 
+def _routes(app):
+    """All routes, including those of included routers (FastAPI >= 0.16x nests them in ``_IncludedRouter``)."""
+    for r in app.routes:
+        sub = getattr(r, "original_router", None)
+        yield from (sub.routes if sub is not None else [r])
+
+
 async def _paste_once():
     engine = Engine(parse_text(CONFIG))
     app = create_app(engine)
-    ws = next(r.endpoint for r in app.routes if getattr(r, "path", None) == "/ws")
-    paste = next(r.endpoint for r in app.routes if getattr(r, "path", None) == "/api/devices/{device_id}/objects/paste")
+    ws = next(r.endpoint for r in _routes(app) if getattr(r, "path", None) == "/ws")
+    paste = next(r.endpoint for r in _routes(app) if getattr(r, "path", None) == "/api/devices/{device_id}/objects/paste")
     await engine.start()
     sock = _Sock()
     task = asyncio.create_task(ws(sock))
@@ -248,15 +258,15 @@ async def _paste_once():
         engine.log_event("test", "marker")
         for _ in range(50):
             await asyncio.sleep(0.05)
-            if any(m["type"] == "log" and m["event"]["text"] == "marker" for m in sock.msgs):
+            if any(m["type"] == "log" and m["event"]["message"] == "marker" for m in sock.msgs):
                 break
         # the UI clears the log on every snapshot and appends live log messages
         shown = []
         for m in sock.msgs:
             if m["type"] == "snapshot":
-                shown = [e["text"] for e in m["data"]["events"]]
+                shown = [e["message"] for e in m["data"]["events"]]
             elif m["type"] == "log":
-                shown.append(m["event"]["text"])
+                shown.append(m["event"]["message"])
         assert "marker" in shown
         assert sum("pasted Copy1" in t for t in shown) == 1, shown
     finally:

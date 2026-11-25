@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Literal, Optional, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from sme_sim_common import config as _common
+from sme_sim_common.config import StrictModel, dump_yaml  # noqa: F401  (dump_yaml re-exported)
 
 # short aliases accepted in config files
 OBJECT_TYPE_ALIASES = {
@@ -149,8 +151,8 @@ def parse_calendar_entry(e: Any, where: str) -> tuple:
     return "date", parse_date(e)
 
 
-class _Model(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+class _Model(StrictModel):
+    """Strict base model (unknown keys are errors) from sme-sim-common."""
 
 
 def ms_index(v: Any, states: Optional[List[str]], oc: Any = None) -> int:
@@ -600,15 +602,8 @@ class SimConfig(_Model):
 
 def parse_text(text: str, fmt: Optional[str] = None) -> SimConfig:
     """Parse YAML or JSON text (YAML is a superset of JSON)."""
-    data = json.loads(text) if fmt == "json" else yaml.safe_load(text)
-    return SimConfig.model_validate(data or {})
+    return _common.parse_text(text, SimConfig, fmt="json" if fmt == "json" else "yaml")
 
 
 def load_file(path: Union[str, Path]) -> SimConfig:
-    p = Path(path)
-    return parse_text(p.read_text(encoding="utf-8"), "json" if p.suffix.lower() == ".json" else None)
-
-
-def dump_yaml(cfg: Union[SimConfig, BaseModel, dict]) -> str:
-    data = cfg.model_dump(exclude_none=True, exclude_defaults=False) if isinstance(cfg, BaseModel) else cfg
-    return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    return _common.load_file(path, SimConfig)
