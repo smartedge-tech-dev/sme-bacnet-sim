@@ -237,18 +237,11 @@ def test_paste_logged_once():
     asyncio.run(_paste_once())
 
 
-def _routes(app):
-    """All routes, including those of included routers (FastAPI >= 0.16x nests them in ``_IncludedRouter``)."""
-    for r in app.routes:
-        sub = getattr(r, "original_router", None)
-        yield from (sub.routes if sub is not None else [r])
-
-
 async def _paste_once():
     engine = Engine(parse_text(CONFIG))
     app = create_app(engine)
-    ws = next(r.endpoint for r in _routes(app) if getattr(r, "path", None) == "/ws")
-    paste = next(r.endpoint for r in _routes(app) if getattr(r, "path", None) == "/api/devices/{device_id}/objects/paste")
+    ws = next(r.endpoint for r in app.routes if getattr(r, "path", None) == "/ws")
+    paste = next(r.endpoint for r in app.routes if getattr(r, "path", None) == "/api/devices/{device_id}/objects/paste")
     await engine.start()
     sock = _Sock()
     task = asyncio.create_task(ws(sock))

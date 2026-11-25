@@ -1,10 +1,11 @@
 """Web API: device duplicate, object copy / paste (reference handling) and the generic property grid.
 
-Calls the FastAPI endpoint functions directly (no HTTP client needed). BACnet port 47996.
+Calls the FastAPI endpoint functions directly; the common duplicate route through an ASGI client. BACnet port 47996.
 """
 
 import asyncio
 
+import httpx
 import pytest
 from fastapi import HTTPException
 
@@ -33,15 +34,8 @@ devices:
 """
 
 
-def _routes(app):
-    """All routes, including those of included routers (FastAPI >= 0.16x nests them in ``_IncludedRouter``)."""
-    for r in app.routes:
-        sub = getattr(r, "original_router", None)
-        yield from (sub.routes if sub is not None else [r])
-
-
 def _ep(app, method, path):
-    for r in _routes(app):
+    for r in app.routes:
         if getattr(r, "path", None) == path and method in getattr(r, "methods", ()):
             return r.endpoint
     raise LookupError(path)
@@ -66,17 +60,25 @@ async def _flow():
     await engine.start()
     try:
         P = "/api/devices/{device_id}"
-        dup = _ep(app, "POST", P + "/duplicate")
+        http = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+        async def dup(device_id):
+            r = await http.post(f"/api/devices/{device_id}/duplicate")
+            if r.status_code != 200:
+                raise HTTPException(r.status_code, r.json()["error"])
+            return r.json()
+
         cfg = _ep(app, "GET", P + "/objects/config")
         paste = _ep(app, "POST", P + "/objects/paste")
         props = _ep(app, "GET", P + "/objects/{key}/properties")
         put = _ep(app, "PUT", P + "/objects/{key}/properties/{prop}")
 
         # ---- duplicate device: next free id (2962 is taken), "(copy)" name, same objects
+        # (the common duplicate route: the key comes back as "name", the device as "device")
         r = await dup(2961)
-        assert r["device_id"] == 2963 and r["name"] == "Src-Dev (copy)"
+        assert r["name"] == 2963 and r["device"]["name"] == "Src-Dev (copy)"
         assert 2963 in engine.devices and len(engine.devices[2963].points) == len(engine.devices[2961].points)
-        assert (await dup(2961))["name"] == "Src-Dev (copy 2)"
+        assert (await dup(2961))["device"]["name"] == "Src-Dev (copy 2)"
         assert await _status(dup(9999)) == 404
 
         # ---- copy objects

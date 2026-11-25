@@ -2,29 +2,27 @@
 
 sme-sim-common (``make_base_app``) serves ``/``, ``/static``, ``/sme-sim-common``, ``/api/version``, ``/api/state``,
 ``GET|PUT /api/config`` (YAML text), ``/api/config/save``, the xlsx routes (``/api/config/xlsx``,
-``/api/config/xlsx-template``, ``/api/config/import``), ``/api/simulation``, the device-template routes and ``/ws``.
-This module adds the BACnet routes through an ``APIRouter``. Device add / duplicate / delete / edit stay here (the
-common ``devices`` feature is off): BACnet devices are keyed by the integer ``device_id``, new devices get a free
-id and a duplicate also renames and renumbers its objects.
+``/api/config/xlsx-template``, ``/api/config/import``), ``/api/simulation``, the device-template routes, the
+device routes (``POST /api/devices``, ``.../duplicate``, ``DELETE``, ``GET|PUT .../config``, keyed by the integer
+``device_id``) and ``/ws``. This module supplies the BACnet hooks (free device ids, ``set_time``, EDE / YAML / JSON
+import) and adds the BACnet routes through an ``APIRouter``.
 """
 
 from __future__ import annotations
 
 import asyncio
 import datetime
-import zipfile
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-import yaml
-from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
-from fastapi.responses import PlainTextResponse, Response
+from fastapi import APIRouter, Body, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, ValidationError
 from sme_sim_common.web import make_base_app
 
 from . import __version__
-from .clipboard import duplicate_device, paste_objects
-from .config import DeviceConfig, SimConfig, dump_yaml
+from .clipboard import duplicate_hook, paste_objects
+from .config import DeviceConfig, SimConfig, dump_yaml, parse_text
 from .ede import export_ede_zip, import_ede_files
 from .engine import Engine
 from .netsettings import apply_network, list_interfaces, network_view
@@ -53,10 +51,6 @@ class EnableReq(BaseModel):
 
 class ProgramReq(BaseModel):
     request: Literal["ready", "load", "run", "halt", "restart", "unload"]
-
-
-class ClockReq(BaseModel):
-    set_time: str  # ISO 8601; naive = local time
 
 
 class PasteReq(BaseModel):
@@ -234,16 +228,6 @@ def bacnet_router(engine: Engine) -> APIRouter:
             raise _bad(e)
         return {"ok": True}
 
-    @r.post("/api/simulation/clock")
-    async def simulation_clock(req: ClockReq):
-        """Move the simulated clock (``POST /api/simulation`` itself is the common run / time-scale route)."""
-        try:
-            ts = datetime.datetime.fromisoformat(req.set_time.replace("Z", "+00:00")).timestamp()
-        except ValueError as e:
-            raise _bad(e)
-        engine.set_clock(ts, "web UI")
-        return engine.config.simulation.model_dump()
-
     @r.post("/api/devices/{device_id}/dcc")
     async def dcc(device_id: int, req: DccReq):
         try:
@@ -273,21 +257,6 @@ def bacnet_router(engine: Engine) -> APIRouter:
         return Response(body, media_type=mt,
                         headers={"Content-Disposition": f'attachment; filename="sme-bacnet-sim-config.{ext}"'})
 
-    @r.post("/api/config/import-ede")
-    async def import_ede(file: List[UploadFile] = File(...)):
-        """EDE import: main CSV (+ state-text CSV) or a zip of both."""
-        uploads = {(f.filename or f"upload-{i}"): await f.read() for i, f in enumerate(file)}
-        try:
-            cfg, warnings = import_ede_files(uploads, base=engine.config)
-        except (ValidationError, yaml.YAMLError, ValueError, UnicodeDecodeError, zipfile.BadZipFile) as e:
-            raise _bad(e)
-        res = await apply(cfg)
-        msg = f"imported {', '.join(uploads)} ({len(cfg.devices)} devices)"
-        if warnings:
-            msg += f", {len(warnings)} warnings: " + "; ".join(warnings[:5]) + (" ..." if len(warnings) > 5 else "")
-        engine.log("config", msg)
-        return {**res, "warnings": warnings}
-
     @r.get("/api/network")
     async def get_network():
         return {**network_view(engine), "interfaces": await asyncio.to_thread(list_interfaces)}
@@ -299,65 +268,7 @@ def bacnet_router(engine: Engine) -> APIRouter:
         except (ValueError, ValidationError) as e:
             raise _bad(e)
 
-    # ---- devices (keyed by device_id)
-
-    @r.get("/api/devices/{device_id}/config")
-    async def get_device(device_id: int):
-        return PlainTextResponse(dump_yaml(device_cfg(device_id)))
-
-    @r.put("/api/devices/{device_id}/config")
-    async def put_device(device_id: int, request: Request):
-        text = (await request.body()).decode("utf-8")
-        try:
-            dev = DeviceConfig.model_validate(yaml.safe_load(text) or {})
-        except (ValidationError, yaml.YAMLError) as e:
-            raise _bad(e)
-        data = cfg_copy()
-        idx = next((i for i, d in enumerate(data["devices"]) if d["device_id"] == device_id), None)
-        if idx is None:
-            raise HTTPException(404, "device not found")
-        data["devices"][idx] = dev.model_dump(exclude_none=True)
-        try:
-            cfg = SimConfig.model_validate(data)
-        except ValidationError as e:
-            raise _bad(e)
-        res = await apply(cfg)
-        engine.log("config", f"device {dev.device_id} ({dev.name}) updated")
-        return res
-
-    @r.post("/api/devices")
-    async def add_device(dev: Dict[str, Any] = Body(...)):
-        data = cfg_copy()
-        if not dev.get("device_id"):
-            used = {d["device_id"] for d in data["devices"]}
-            n = 1001
-            while n in used:
-                n += 1
-            dev["device_id"] = n
-        try:
-            new = DeviceConfig.model_validate(dev)
-            data["devices"].append(new.model_dump(exclude_none=True))
-            cfg = SimConfig.model_validate(data)
-        except ValidationError as e:
-            raise _bad(e)
-        res = await apply(cfg)
-        engine.log("config", f"device {new.device_id} ({new.name}) added")
-        return {**res, "device_id": new.device_id}
-
-    @r.post("/api/devices/{device_id}/duplicate")
-    async def duplicate(device_id: int):
-        data = cfg_copy()
-        try:
-            new = duplicate_device(data, device_id)
-        except KeyError:
-            raise HTTPException(404, "device not found")
-        try:
-            cfg = SimConfig.model_validate(data)
-        except ValidationError as e:
-            raise _bad(e)
-        res = await apply(cfg)
-        engine.log("config", f"device {device_id} duplicated as {new['device_id']} ({new['name']})")
-        return {**res, "device_id": new["device_id"], "name": new["name"]}
+    # ---- objects of a device (add / duplicate / delete / edit of devices: the common routes)
 
     @r.get("/api/devices/{device_id}/objects/config")
     async def objects_config(device_id: int, keys: str = ""):
@@ -394,22 +305,62 @@ def bacnet_router(engine: Engine) -> APIRouter:
         return {"ok": True, "pasted": [{"name": o.name, "key": f"{o.type}:{o.instance}"} for o in new],
                 "rejected": rejected}
 
-    @r.delete("/api/devices/{device_id}")
-    async def delete_device(device_id: int):
-        data = cfg_copy()
-        before = len(data["devices"])
-        data["devices"] = [d for d in data["devices"] if d["device_id"] != device_id]
-        if len(data["devices"]) == before:
-            raise HTTPException(404, "device not found")
-        res = await apply(SimConfig.model_validate(data))
-        engine.log("config", f"device {device_id} deleted")
-        return res
-
     return r
+
+
+# ---- sme-sim-common hooks
+
+def _used_ids(engine: Engine) -> set:
+    cfg = engine.config
+    used = {d.device_id for d in cfg.devices}
+    if cfg.network.router.device_id is not None:
+        used.add(cfg.network.router.device_id)
+    return used
+
+
+def create_hook(engine: Engine, body: Dict[str, Any]) -> Dict[str, Any]:
+    """``POST /api/devices`` without a ``device_id``: the first free id from 1001."""
+    if body.get("device_id"):
+        return body
+    used, n = _used_ids(engine), 1001
+    while n in used:
+        n += 1
+    return {**body, "device_id": n}
+
+
+def simulation_hook(engine: Engine, rest: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """``POST /api/simulation`` ``{"set_time": ISO 8601}`` (naive = local time) moves the simulated clock."""
+    unknown = sorted(set(rest) - {"set_time"})
+    if unknown:
+        raise ValueError(f"unknown field(s): {', '.join(unknown)} (running, time_scale, set_time)")
+    if "set_time" not in rest:
+        return None
+    ts = datetime.datetime.fromisoformat(str(rest["set_time"]).replace("Z", "+00:00")).timestamp()
+    engine.set_clock(ts, "web UI")
+    return {k: v for k, v in engine.config.simulation.model_dump().items() if k not in ("running", "time_scale")}
+
+
+def import_ede(engine: Engine, files: Dict[str, bytes]) -> Tuple[SimConfig, List[str]]:
+    """EDE import: main CSV (+ state-text CSV) or a zip of both."""
+    return import_ede_files(files, base=engine.config)
+
+
+def import_text(engine: Engine, files: Dict[str, bytes]) -> Tuple[SimConfig, List[str], str]:
+    """YAML / JSON import: the file text becomes the config text (comments kept)."""
+    if len(files) != 1:
+        raise ValueError("YAML / JSON import takes a single file")
+    (name, data), = files.items()
+    text = data.decode("utf-8-sig")
+    return parse_text(text, "json" if name.lower().endswith(".json") else None), [], text
+
+
+IMPORT_HOOKS = {".csv": import_ede, ".zip": import_ede, ".yaml": import_text, ".yml": import_text,
+                ".json": import_text}
 
 
 def create_app(engine: Engine, *, manage_engine: bool = True):
     return make_base_app(engine, static_dir=STATIC, product_routers=[bacnet_router(engine)],
                          title="SME BACnetSim", version=__version__, config_model=SimConfig,
                          xlsx=SCHEMA, templates=REGISTRY, devices_attr="devices", device_key="device_id",
-                         features={"devices": False}, manage_engine=manage_engine)
+                         key_type=int, create_hook=create_hook, duplicate_hook=duplicate_hook,
+                         simulation_hook=simulation_hook, import_hooks=IMPORT_HOOKS, manage_engine=manage_engine)

@@ -9,7 +9,6 @@ reference does not resolve in the target device is rejected.
 
 from __future__ import annotations
 
-import copy
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from pydantic import ValidationError
@@ -111,22 +110,18 @@ def paste_objects(dev: DeviceConfig, items: List[Dict[str, Any]]) -> Tuple[List[
             rejected.append({"name": orig, "reason": reason})
 
 
-def duplicate_device(data: Dict[str, Any], device_id: int) -> Dict[str, Any]:
-    """Append a copy of device ``device_id`` to the config dict: next free device id, name "Name (copy)"."""
-    src = next((d for d in data["devices"] if d["device_id"] == device_id), None)
-    if src is None:
-        raise KeyError("device not found")
-    used = {d["device_id"] for d in data["devices"]}
-    router = (data.get("network") or {}).get("router") or {}
-    if router.get("device_id") is not None:
-        used.add(router["device_id"])
-    n = device_id + 1
-    while n in used:
-        n += 1
-    if n > MAX_DEVICE_ID:
-        n = next(i for i in range(MAX_DEVICE_ID + 1) if i not in used)
-    new = copy.deepcopy(src)
-    new["device_id"] = n
-    new["name"] = _free_name(src["name"], {d["name"] for d in data["devices"]})
-    data["devices"].append(new)
-    return new
+def duplicate_hook(engine: Any, dev: Dict[str, Any], new_key: int, body: Dict[str, Any]) -> Dict[str, Any]:
+    """sme-sim-common ``duplicate_hook`` for ``POST /api/devices/{device_id}/duplicate``: the copy is named
+    "Name (copy)"; its device id is the requested ``device_id`` or the common default (largest id + 1), moved past
+    the router's device id and wrapped to the lowest free id above ``MAX_DEVICE_ID``."""
+    cfg = engine.config
+    used = {d.device_id for d in cfg.devices}
+    if cfg.network.router.device_id is not None:
+        used.add(cfg.network.router.device_id)
+    n = new_key
+    if body.get("device_id") in (None, ""):
+        while n in used:
+            n += 1
+        if n > MAX_DEVICE_ID:
+            n = next(i for i in range(MAX_DEVICE_ID + 1) if i not in used)
+    return {**dev, "device_id": n, "name": _free_name(dev["name"], {d.name for d in cfg.devices})}
