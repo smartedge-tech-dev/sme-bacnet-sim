@@ -38,6 +38,8 @@ Configs, Excel point lists and EDE files from 0.4.0 load unchanged; Excel export
   characters (Excel cell limit), left out`); with errors on several sheets, errors are listed sheet by sheet after
   all sheets are read.
 - Docker image starts the web UI with `--http-port 8080`.
+- Excel import: `Network` rows now override the running network / simulation settings key by key; keys that are
+  not listed or have an empty value keep their running value (they used to fall back to the defaults) (#8).
 
 ### Fixed
 - Device list subtitle (`device {id} · address …`) and the missing Japanese / Chinese label for BBMD mode in the network dialog.

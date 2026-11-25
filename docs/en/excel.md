@@ -38,8 +38,8 @@ cell starts with `#` is a comment and is ignored, empty rows too. Empty cells me
   alarm settings such as `{alarm: {notify_type: event}}` ...). Column values win over `extra`.
 - Devices with a `template` keep it: their `Points` rows are overrides / additions to the template objects,
   exactly as `objects:` in YAML.
-- Without a `Network` sheet (or with no rows in it) the network and simulation settings of the running
-  configuration are kept. With rows, unspecified keys take their defaults.
+- `Network` rows override the network and simulation settings of the running configuration key by key: keys
+  that are not listed, or have an empty `value`, keep their running value.
 
 ## Import checks
 

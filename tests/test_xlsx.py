@@ -213,12 +213,27 @@ def test_network_blank_value_skipped_but_key_checked():
     wb["Network"].append(["network.port", 47901])
     wb["Network"].append(["network.ip", None])  # blank value: the row is skipped
     cfg, warnings = import_xlsx(_wb_bytes(wb), base=parse_text(SMALL))
-    # 0.4.0: with Network rows the section is rebuilt from them alone, so a skipped key takes the model default
-    assert warnings == [] and cfg.network.port == 47901 and cfg.network.ip == "auto"
+    # #8: the rows override the running settings key by key, so a skipped key keeps the base value
+    assert warnings == [] and cfg.network.port == 47901 and cfg.network.ip == "127.0.0.1/8"
     wb["Network"].append(["bogus.key", None])  # row 5: the key is checked before the blank value is skipped
     with pytest.raises(XlsxImportError) as ei:
         import_xlsx(_wb_bytes(wb))
     assert len(ei.value.errors) == 1 and ei.value.errors[0].startswith("Network row 5, column 'key': unknown key")
+
+
+def test_network_rows_override_running_settings():
+    base = parse_text(SMALL)
+    wb = load_workbook(io.BytesIO(blank_template()))
+    wb["Devices"].append([1, "D"])
+    wb["Network"].append(["simulation.time_scale", 60])
+    cfg, _ = import_xlsx(_wb_bytes(wb), base=base)
+    assert cfg.simulation.time_scale == 60 and cfg.network == base.network
+    wb["Network"].append(["network.router.name", "R2"])  # nested key: the other router keys are kept
+    wb["Network"].append(["network.foreign_device.bbmd", "192.168.2.1"])  # nested section absent in the base
+    cfg, _ = import_xlsx(_wb_bytes(wb), base=base)
+    assert cfg.network.port == 47900 and cfg.network.router.name == "R2"
+    assert cfg.network.router.device_id == base.network.router.device_id
+    assert cfg.network.foreign_device.bbmd == "192.168.2.1:47808"  # normalised, ttl default
 
 
 def test_schema_is_common_xlsx_schema():

@@ -330,8 +330,8 @@ def _build(tables: Dict[str, List[SheetRow]], base: Optional[SimConfig], errors:
         except ValidationError as e:
             errors.extend(_pydantic_errors(e, f"Devices row {dev_rows[dev_id]}", {c: c for c in DEVICE_COLUMNS}))
 
-    # network / simulation settings. As in 0.4.0, any data row rebuilds both sections from the sheet (keys
-    # without a value fall back to the defaults); without data rows the running settings are kept.
+    # network / simulation settings: the Network rows override the running settings key by key (#8); keys that
+    # are not listed or have no value keep their running value.
     base = base or SimConfig()
     network, simulation = base.network.model_copy(deep=True), base.simulation.model_copy(deep=True)
     rows = tables["Network"]
@@ -353,9 +353,11 @@ def _build(tables: Dict[str, List[SheetRow]], base: Optional[SimConfig], errors:
         node[parts[-1]] = r.raw["value"]
         key_rows[k] = r.row_no
     if rows:
-        for top, model in (("network", NetworkConfig), ("simulation", SimulationConfig)):
+        for top, model, current in (("network", NetworkConfig, network), ("simulation", SimulationConfig, simulation)):
+            if not tree[top]:
+                continue
             try:
-                validated = model.model_validate(tree[top])
+                validated = model.model_validate(_merge(current.model_dump(), tree[top]))
             except ValidationError as e:
                 for err in e.errors():
                     k = ".".join([top] + [str(x) for x in err["loc"]])
@@ -375,6 +377,14 @@ def _build(tables: Dict[str, List[SheetRow]], base: Optional[SimConfig], errors:
     except ValidationError as e:
         errors.extend(f"Devices / Network: {err['msg']}" for err in e.errors())
         return None
+
+
+def _merge(base: Dict[str, Any], over: Dict[str, Any]) -> Dict[str, Any]:
+    """``base`` with the values of ``over`` laid on top, nested dicts merged key by key."""
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = _merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
 
 
 #: The BACnet workbook behind sme-sim-common's xlsx routes (``GET /api/config/xlsx``, ``.../xlsx-template``,
