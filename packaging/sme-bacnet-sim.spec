@@ -14,9 +14,10 @@ datas = [
 datas += collect_data_files("bacpypes3")
 
 hiddenimports = (
+    # sme-sim-common's PyInstaller hook (pyinstaller40 entry point) adds its static files and the uvicorn /
+    # multipart hidden imports.
     collect_submodules("bacpypes3")
-    + collect_submodules("uvicorn")
-    + ["multipart", "yaml", "h11", "websockets", "httptools"]
+    + ["yaml", "h11", "websockets", "httptools"]
 )
 
 a = Analysis(

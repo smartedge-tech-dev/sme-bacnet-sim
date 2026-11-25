@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "SME BACnetSim: a free BACnet/IP device simulator with a web UI"
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["bacnet", "simulator", "building-automation", "bacpypes3"]
 classifiers = [
   "License :: OSI Approved :: MIT License",
@@ -17,11 +17,11 @@ classifiers = [
 ]
 dependencies = [
   "bacpypes3>=0.0.102",
-  "fastapi>=0.110",
+  # Shared web shell, standard routes, behaviors, templates, xlsx and CLI helpers (FastAPI, uvicorn, PyYAML,
+  # python-multipart come with it). Pre-release pin while sme-sim-common is unpublished; change to
+  # ">=1.0,<2" once 1.0.0 is on PyPI (before the 0.5.0 release).
+  "sme-sim-common[xlsx]>=1.0.0.dev0,<2",
   "uvicorn[standard]>=0.29",
-  "pyyaml>=6.0",
-  "python-multipart>=0.0.9",
-  "openpyxl>=3.1",
 ]
 
 [project.urls]
