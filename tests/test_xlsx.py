@@ -190,3 +190,31 @@ def test_web_endpoints():
     r = client.post("/api/config/import", files={"file": ("back.xlsx", exported)})
     assert r.status_code == 200
     assert applied[-1].model_dump(exclude_none=True) == parse_text(SMALL).model_dump(exclude_none=True)
+
+
+# ---- 0.4.0 behaviour guards for the XlsxSchema port (sme-sim-common migration)
+
+def test_state_texts_beyond_template_width_round_trip():
+    texts = [f"S{i}" for i in range(1, 13)]  # 12 states > the 8 text_N columns of the blank template
+    cfg = parse_text("devices:\n  - device_id: 1\n    name: D\n    objects:\n"
+                     f"      - {{type: multi-state-value, instance: 1, name: M, states: [{', '.join(texts)}]}}\n")
+    data, warnings = export_xlsx(cfg)
+    assert warnings == []
+    header = [c.value for c in load_workbook(io.BytesIO(data))["StateTexts"][1]]
+    assert header == ["ref", *(f"text_{i}" for i in range(1, 13))]
+    back, _ = import_xlsx(data)
+    assert back.devices[0].objects[0].states == texts
+
+
+def test_network_blank_value_skipped_but_key_checked():
+    wb = load_workbook(io.BytesIO(blank_template()))
+    wb["Devices"].append([1, "D"])
+    wb["Network"].append(["network.port", 47901])
+    wb["Network"].append(["network.ip", None])  # blank value: the row is skipped
+    cfg, warnings = import_xlsx(_wb_bytes(wb), base=parse_text(SMALL))
+    # 0.4.0: with Network rows the section is rebuilt from them alone, so a skipped key takes the model default
+    assert warnings == [] and cfg.network.port == 47901 and cfg.network.ip == "auto"
+    wb["Network"].append(["bogus.key", None])  # row 5: the key is checked before the blank value is skipped
+    with pytest.raises(XlsxImportError) as ei:
+        import_xlsx(_wb_bytes(wb))
+    assert len(ei.value.errors) == 1 and ei.value.errors[0].startswith("Network row 5, column 'key': unknown key")
