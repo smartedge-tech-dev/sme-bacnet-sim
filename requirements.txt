@@ -1,6 +1,4 @@
 # Runtime dependencies (mirror of pyproject.toml [project.dependencies]).
-# sme-sim-common is not on PyPI yet: until 1.0.0 is published install it from a local checkout first
-# (pip install -e ../sme-sim-common[xlsx]).
 bacpypes3>=0.0.102
-sme-sim-common[xlsx]>=1.0.0.dev0,<2
+sme-sim-common[xlsx]>=1.0,<2
 uvicorn[standard]>=0.29

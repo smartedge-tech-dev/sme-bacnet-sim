@@ -4,7 +4,7 @@
 导出、编辑后再导入。
 
 - **文件 → 下载空白 Excel 模板**（`GET /api/config/xlsx-template`）：只含全部工作表和列的空工作簿。
-- **文件 → 导出 → Excel 点表**（`GET /api/config/export?format=xlsx`）：当前运行的配置。
+- **文件 → 导出 → Excel 点表**（`GET /api/config/xlsx`）：当前运行的配置。
 - **文件 → 导入…** 接受单个 `.xlsx` 文件（`POST /api/config/import`）。
 
 ## Workbook layout

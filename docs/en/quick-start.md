@@ -15,7 +15,8 @@ Open http://127.0.0.1:8080/ . Options:
 | `--bacnet-port 47808` | BACnet/IP UDP port |
 | `--foreign-bbmd 192.168.2.1[:47808]` | Register as a foreign device with this BBMD (overrides config) |
 | `--foreign-ttl 300` | Foreign device Time-to-Live in seconds (overrides config) |
-| `--host 0.0.0.0 --port 8080` | Web UI bind address (default localhost only) |
+| `--host 0.0.0.0 --http-port 8080` | Web UI bind address (default localhost only) |
+| `--browser` | Open the web UI in a browser on start (not opened by default; `--no-browser` is the default) |
 
 ## Connecting a BACnet client
 

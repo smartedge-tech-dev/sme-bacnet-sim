@@ -41,4 +41,4 @@ EXPOSE 47808/udp
 
 # Note: BACnet broadcast (Who-Is) does not cross Docker bridge networks;
 # use --network host on Linux or publish 47808/udp for unicast.
-CMD ["python", "-m", "sme_bacnet_sim", "-c", "configs/demo-building.yaml", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "-m", "sme_bacnet_sim", "-c", "configs/demo-building.yaml", "--host", "0.0.0.0", "--http-port", "8080"]

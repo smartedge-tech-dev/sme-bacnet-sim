@@ -5,7 +5,7 @@ that can be filled in by hand and imported, or exported from the running simulat
 
 - **File → Download blank Excel template** (`GET /api/config/xlsx-template`): an empty workbook with all
   sheets and columns.
-- **File → Export → Excel point list** (`GET /api/config/export?format=xlsx`): the running configuration.
+- **File → Export → Excel point list** (`GET /api/config/xlsx`): the running configuration.
 - **File → Import…** accepts a single `.xlsx` file (`POST /api/config/import`).
 
 ## Workbook layout

@@ -15,7 +15,8 @@ python -m venv .venv
 | `--bacnet-port 47808` | BACnet/IP UDP 端口 |
 | `--foreign-bbmd 192.168.2.1[:47808]` | 作为 foreign device 注册到该 BBMD（优先于配置文件） |
 | `--foreign-ttl 300` | foreign device 的 Time-to-Live（秒，优先于配置文件） |
-| `--host 0.0.0.0 --port 8080` | Web UI 绑定地址（默认仅限 localhost） |
+| `--host 0.0.0.0 --http-port 8080` | Web UI 绑定地址（默认仅限 localhost） |
+| `--browser` | 启动时在浏览器中打开 Web UI（默认不打开；默认为 `--no-browser`） |
 
 ## 连接 BACnet 客户端
 

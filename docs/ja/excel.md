@@ -4,7 +4,7 @@ YAML・EDE に加えて、設定を Excel ブック（`.xlsx`）として読み�
 ポイントリストとしても、稼働中のシミュレーターからエクスポート → 編集 → 再インポートする用途にも使えます。
 
 - **ファイル → 空の Excel テンプレートをダウンロード**（`GET /api/config/xlsx-template`）: 全シートと列だけの空ブック。
-- **ファイル → エクスポート → Excel ポイントリスト**（`GET /api/config/export?format=xlsx`）: 稼働中の設定。
+- **ファイル → エクスポート → Excel ポイントリスト**（`GET /api/config/xlsx`）: 稼働中の設定。
 - **ファイル → インポート…** は `.xlsx` ファイル 1 つを受け付けます（`POST /api/config/import`）。
 
 ## Workbook layout

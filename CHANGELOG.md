@@ -6,6 +6,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-25
+
+BACnetSim is now built on [sme-sim-common](https://pypi.org/project/sme-sim-common/) 1.x, the shared base of the
+SME simulator series (web shell, standard HTTP routes, behaviors, templates, Excel workbook and CLI helpers).
+Configs, Excel point lists and EDE files from 0.4.0 load unchanged; Excel exports are cell-identical to 0.4.0.
+
+### Changed (breaking)
+- **Python 3.11 or later** is required (was 3.10). FastAPI, PyYAML, python-multipart and openpyxl now come with
+  `sme-sim-common[xlsx]>=1.0,<2`.
+- Excel point-list export moved to `GET /api/config/xlsx`; `GET /api/config/export?format=xlsx` now returns 400
+  (`format=yaml|json|ede` are unchanged).
+- `POST /api/devices` and `POST /api/devices/{id}/duplicate` return `{"ok": true, "name": <device id>, "device": {...}}`
+  (duplicate returned `{"device_id", "name"}`).
+- Event log entries (`/api/state`, `/ws`) carry `level` and `message` (was `text`); the BACnet category stays in `kind`.
+- Error responses use the sme-sim-common body (`detail` plus `error`); Excel import row errors are listed in `errors`.
+
+### Added
+- CLI: `--http-port` for the web UI port (`--port` is still accepted), `--browser` to open the web UI in the
+  default browser (still off by default; `--no-browser`), `--templates-dir` for user templates, `--version`, and
+  `sme-bacnet-sim validate CONFIG` to check a config file without starting the simulator (exit code 2 on errors).
+- HTTP API: `GET /api/version`, `POST /api/templates/reload`, `POST /api/templates/from-device/{id}` (save a device
+  as a user template).
+
+### Changed
+- Web UI uses the shared sme-sim-common shell (menus, About / Help, event log, dialogs, light / dark theme); the
+  brand blue accent, default port 8080 and the browser storage key are unchanged.
+- *File → Import* sends every file type (YAML, JSON, Excel `.xlsx`, EDE `.csv` / `.zip`) to `POST /api/config/import`.
+- Duplicating a device still uses the first free device ID after the source (skipping the router's device ID).
+- Excel: the cell-limit warning uses the shared wording (`Devices row 3, column 'description': longer than 32767
+  characters (Excel cell limit), left out`); with errors on several sheets, errors are listed sheet by sheet after
+  all sheets are read.
+- Docker image starts the web UI with `--http-port 8080`.
+
+### Fixed
+- Device list subtitle (`device {id} · address …`) and the missing Japanese / Chinese label for BBMD mode in the network dialog.
+
 ## [0.4.0] - 2026-11-24
 
 ### Added

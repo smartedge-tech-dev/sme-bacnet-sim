@@ -32,7 +32,8 @@ python -m venv .venv
 | `--bacnet-port 47808` | BACnet/IP UDP 端口 |
 | `--foreign-bbmd 192.168.2.1[:47808]` | 作为 foreign device 注册到该 BBMD（优先于配置文件） |
 | `--foreign-ttl 300` | foreign device 的 Time-to-Live（秒，优先于配置文件） |
-| `--host 0.0.0.0 --port 8080` | Web UI 绑定地址（默认仅限 localhost） |
+| `--host 0.0.0.0 --http-port 8080` | Web UI 绑定地址（默认仅限 localhost） |
+| `--browser` | 启动时在浏览器中打开 Web UI（默认不打开；默认为 `--no-browser`） |
 
 ### 连接 BACnet 客户端
 
@@ -493,7 +494,7 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 ### Excel 点表
 
 文件 → **下载空白 Excel 模板**（`GET /api/config/xlsx-template`）得到空白 `.xlsx` 点表；
-文件 → 导出 → **Excel 点表**（`GET /api/config/export?format=xlsx`）导出当前配置；文件 → 导入可读入 `.xlsx`。
+文件 → 导出 → **Excel 点表**（`GET /api/config/xlsx`）导出当前配置；文件 → 导入可读入 `.xlsx`。
 工作表：`Devices`（每行一个设备：`device_id`、`name`、`template`、`params`、厂商 / 位置 / 密码）、
 `Points`（每行一个对象：`device_id`、`type`、`instance`、`name`、`units`、`value`、`commandable`、`min` / `max`、
 `cov_increment`、`state_texts`、active / inactive 文本、`behavior`、`alarm_class` / `alarm_high_limit` /
@@ -554,6 +555,7 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 
 | 方法 | 路径 | |
 |---|---|---|
+| GET | `/api/version` | `{name, version, common_version}` |
 | GET | `/api/state` | 完整快照 |
 | WS | `/ws` | 快照 + 数值变化 + 日志事件 |
 | POST | `/api/devices/{id}/objects/{type:instance}/write` | `{"value": 1, "priority": 8}` |
@@ -562,12 +564,17 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 | POST | `/api/devices/{id}/dcc` | `{"state": "enable"}`（或 `disable` / `disable-initiation`） |
 | POST | `/api/simulation` | `{"running": true, "time_scale": 60, "set_time": "2026-11-23T08:00:00"}`（均可选；不带时区的时间 = 本地时间） |
 | GET/PUT | `/api/config` | 整个配置（PUT 接受 YAML 或 JSON 文本） |
+| POST | `/api/config/save` | 把运行中的配置写入 `-c` 指定的文件（未带 `-c` 启动时返回 400），返回 `{ok, path}` |
 | GET/PUT | `/api/network` | 网络设置与本机 IPv4 网卡（`{network, bind, config_path, interfaces}`）；PUT `{ip, port, network_number, virtual_network, mode, router, foreign_device}` 校验、重新绑定并写回 `network:` 部分 → `{ok, bind, saved, save_error}` |
 | POST | `/api/config/import` | multipart 上传：一个 YAML / JSON / Excel（`.xlsx`）文件，或 EDE CSV 文件 / zip（字段 `file`，可重复） |
-| GET | `/api/config/export?format=yaml\|json\|ede\|xlsx` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip，`xlsx` = Excel 点表） |
+| GET | `/api/config/export?format=yaml\|json\|ede` | 下载（`ede` = 主 CSV + 状态文本 CSV 的 zip；Excel 用 `GET /api/config/xlsx`） |
+| GET | `/api/config/xlsx` | 把运行中的配置下载为 Excel 点表 |
 | GET | `/api/config/xlsx-template` | 空白 Excel 点表模板 |
-| POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | 添加 / 编辑 / 删除设备 |
-| POST | `/api/devices/{id}/duplicate` | 复制设备（下一个空闲 ID、`Name (copy)`），返回 `{"device_id", "name"}` |
+| GET | `/api/templates` | 模板目录 |
+| POST | `/api/templates/reload` | 重新加载用户模板，返回 `{dir, loaded, errors, templates}` |
+| POST | `/api/templates/from-device/{id}` | `{"name": "my-ahu", "title": ..., "description": ..., "overwrite": false}` 把设备保存为用户模板，返回 `{ok, name, path}`（已存在则 409） |
+| POST/PUT/DELETE | `/api/devices`, `/api/devices/{id}/config` | 添加 / 编辑 / 删除设备；不带 `device_id` 的 POST `/api/devices` 取 1001 起第一个空闲 ID，返回 `{ok, name, device}`（ID 已存在则 409）；`GET /api/devices/{id}/config` 以 YAML 返回该设备 |
+| POST | `/api/devices/{id}/duplicate` | 复制设备（可选 `{"device_id"}`，否则取下一个空闲 ID；名称 `Name (copy)`），返回 `{ok, name, device}`（`name` = 新设备 ID，`device` = 副本） |
 | GET | `/api/devices/{id}/objects/config?keys=analog-value:1,...` | 用于复制的对象配置（模板对象已展开） |
 | POST | `/api/devices/{id}/objects/paste` | `{"objects": [对象配置, ...]}` → `{"pasted": [{name, key}], "rejected": [{name, reason}]}` |
 | GET | `/api/devices/{id}/objects/{type:instance}/properties` | 全部属性（`device:{id}` = 设备对象）：`[{id, name, value, datatype, writable, editable, kind}]` |

@@ -18,9 +18,8 @@ classifiers = [
 dependencies = [
   "bacpypes3>=0.0.102",
   # Shared web shell, standard routes, behaviors, templates, xlsx and CLI helpers (FastAPI, uvicorn, PyYAML,
-  # python-multipart come with it). Pre-release pin while sme-sim-common is unpublished; change to
-  # ">=1.0,<2" once 1.0.0 is on PyPI (before the 0.5.0 release).
-  "sme-sim-common[xlsx]>=1.0.0.dev0,<2",
+  # python-multipart come with it).
+  "sme-sim-common[xlsx]>=1.0,<2",
   "uvicorn[standard]>=0.29",
 ]
 

@@ -15,7 +15,8 @@ http://127.0.0.1:8080/ を開きます。オプション:
 | `--bacnet-port 47808` | BACnet/IP の UDP ポート |
 | `--foreign-bbmd 192.168.2.1[:47808]` | この BBMD に Foreign Device として登録（設定ファイルより優先） |
 | `--foreign-ttl 300` | Foreign Device の Time-to-Live（秒、設定ファイルより優先） |
-| `--host 0.0.0.0 --port 8080` | Web UI のバインドアドレス（デフォルトは localhost のみ） |
+| `--host 0.0.0.0 --http-port 8080` | Web UI のバインドアドレス（デフォルトは localhost のみ） |
+| `--browser` | 起動時に Web UI をブラウザで開く（既定では開きません。既定は `--no-browser`） |
 
 ## BACnet クライアントの接続
 
