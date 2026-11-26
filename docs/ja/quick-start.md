@@ -6,6 +6,8 @@ python -m venv .venv
 .venv\Scripts\python -m sme_bacnet_sim --config configs/demo-building.yaml
 ```
 
+![ポイントのライブ値とトレンドグラフ](../assets/screenshots/ja/overview.png)
+
 http://127.0.0.1:8080/ を開きます。オプション:
 
 | オプション | 意味 |
@@ -42,6 +44,8 @@ http://127.0.0.1:8080/ を開きます。オプション:
 設定ファイルの `network:` セクションに書き戻します（他のセクションと未保存の変更はそのまま。`network:` 内のコメントは消えます）。
 `--ip` / `--bacnet-port` などのコマンドラインオプションは次回起動時も優先されます。変更後はクライアント側でデバイスを再検出してください。
 Not supported：Read-Property-Multiple やセグメンテーション対応のオフ（常にオン）。
+
+![BACnet ネットワーク設定（再起動なしで適用）](../assets/screenshots/ja/network.png)
 
 ## Docker
 

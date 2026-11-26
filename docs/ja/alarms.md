@@ -4,6 +4,8 @@
 通知クラス番号です。Web UI はデバイスのオブジェクト一覧に通知クラスを表示します（読み取り専用:
 優先度、ack-required フラグ、受信先。編集は設定ファイルで行います）。
 
+![アラーム一覧と確認（Ack）](../assets/screenshots/ja/alarms.png)
+
 | キー | 意味 |
 |---|---|
 | `priority` | `[to-offnormal, to-fault, to-normal]`、デフォルトは `[100, 100, 200]` |

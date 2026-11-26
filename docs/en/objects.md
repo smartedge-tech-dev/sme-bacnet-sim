@@ -20,3 +20,5 @@
 | `controlled_object`, `manipulated_object`, `setpoint`, `setpoint_object`, `proportional_constant`, `integral_constant`, `derivative_constant`, `bias`, `action`, `update_interval` | loops only (below) |
 | `file_type`, `access`, `content`, `path`, `read_only`, `program_state`, `instance_of`, `program_location` | files and programs only (below) |
 | `monitored_object`, `event_type`, `event_parameters`, `notification_class`, `event_enable`, `notify_type`, `time_delay`, `time_delay_normal` | event enrollments only (below) |
+
+![A device built from scratch in YAML (expression and follow behaviors)](../assets/screenshots/en/custom-device.png)

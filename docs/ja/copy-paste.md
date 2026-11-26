@@ -16,3 +16,5 @@
   または解除できます。編集できるのは基本型（real、double、unsigned、integer、boolean、enumerated、character string）
   のみで、構造型（配列・リスト・シーケンス）は JSON で表示し UI からは読み取り専用です。Object_Identifier・Object_Type・
   Property_List は UI から書き込みません。
+
+![プロパティインスペクタ：任意のプロパティを読み書き](../assets/screenshots/ja/properties.png)

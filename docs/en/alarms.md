@@ -4,6 +4,8 @@
 notification class number. The web UI lists notification classes in the device's object list (read-only:
 priorities, ack-required flags and recipients; edit them in the configuration).
 
+![Alarm list with acknowledge](../assets/screenshots/en/alarms.png)
+
 | key | meaning |
 |---|---|
 | `priority` | `[to-offnormal, to-fault, to-normal]`, default `[100, 100, 200]` |

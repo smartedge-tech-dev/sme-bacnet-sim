@@ -5,6 +5,8 @@ A BACnet/IP device simulator with a live web UI. Simulate lighting controllers, 
 power meters, sensors, PV inverters — or any device you describe in YAML — and watch their values change
 in the browser while a real BACnet client (Yabe, Niagara, your own EMS…) reads and commands them.
 
+![Live point values and trend chart](../assets/screenshots/en/live.gif)
+
 - **Many devices on one port.** A built-in BACnet router owns UDP 47808; every simulated device sits on a
   virtual network behind it (default network 100), so clients discover them all with one Who-Is.
 - **Realistic behavior.** Room temperature follows the set point when the AC is on, energy integrates power,
