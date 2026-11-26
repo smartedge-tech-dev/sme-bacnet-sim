@@ -20,3 +20,5 @@
 | `controlled_object`, `manipulated_object`, `setpoint`, `setpoint_object`, `proportional_constant`, `integral_constant`, `derivative_constant`, `bias`, `action`, `update_interval` | Loop 専用（後述） |
 | `file_type`, `access`, `content`, `path`, `read_only`, `program_state`, `instance_of`, `program_location` | File / Program 専用（後述） |
 | `monitored_object`, `event_type`, `event_parameters`, `notification_class`, `event_enable`, `notify_type`, `time_delay`, `time_delay_normal` | Event Enrollment 専用（後述） |
+
+![YAML で一から定義したデバイス（expr / follow behavior）](../assets/screenshots/ja/custom-device.png)

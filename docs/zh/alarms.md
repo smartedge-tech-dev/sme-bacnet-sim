@@ -2,6 +2,8 @@
 
 `type: nc`（或 `notification-class`）会创建一个 Notification Class 对象；其 `instance` 即 Notification Class 编号。Web UI 在设备的对象列表中列出 Notification Class（只读：优先级、需确认标志和接收方；请在配置中编辑）。
 
+![报警列表与确认（Ack）](../assets/screenshots/zh/alarms.png)
+
 | 键 | 含义 |
 |---|---|
 | `priority` | `[to-offnormal, to-fault, to-normal]`，默认 `[100, 100, 200]` |

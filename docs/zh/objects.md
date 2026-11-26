@@ -20,3 +20,5 @@
 | `controlled_object`, `manipulated_object`, `setpoint`, `setpoint_object`, `proportional_constant`, `integral_constant`, `derivative_constant`, `bias`, `action`, `update_interval` | 仅用于 Loop（见下文） |
 | `file_type`, `access`, `content`, `path`, `read_only`, `program_state`, `instance_of`, `program_location` | 仅用于 File / Program（见下文） |
 | `monitored_object`, `event_type`, `event_parameters`, `notification_class`, `event_enable`, `notify_type`, `time_delay`, `time_delay_normal` | 仅用于 Event Enrollment（见下文） |
+
+![用 YAML 从零定义的设备（expr / follow behavior）](../assets/screenshots/zh/custom-device.png)

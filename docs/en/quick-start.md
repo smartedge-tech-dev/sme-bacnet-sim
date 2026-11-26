@@ -6,6 +6,8 @@ python -m venv .venv
 .venv\Scripts\python -m sme_bacnet_sim --config configs/demo-building.yaml
 ```
 
+![Live point values and trend chart](../assets/screenshots/en/overview.png)
+
 Open http://127.0.0.1:8080/ . Options:
 
 | Option | Meaning |
@@ -43,6 +45,8 @@ without restarting and writes the `network:` section back to the config file (ot
 left as they are; comments inside `network:` are lost). Command-line options such as `--ip` / `--bacnet-port` still
 win at the next start. Clients have to discover the devices again after a change.
 Not supported: switching off Read-Property-Multiple or segmentation support (always on).
+
+![BACnet network settings, applied without a restart](../assets/screenshots/en/network.png)
 
 ## Docker
 

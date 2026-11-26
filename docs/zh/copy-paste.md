@@ -12,3 +12,5 @@
   及是否可写。写入走与 BACnet WriteProperty 请求相同的路径（相同校验、报警属性写回配置）；可命令的 Present_Value 可选择
   优先级写入或释放。仅基本类型（real、double、unsigned、integer、boolean、enumerated、character string）可编辑；构造类型
   （数组、列表、序列）以 JSON 显示，在 UI 中只读。Object_Identifier、Object_Type、Property_List 不从 UI 写入。
+
+![属性查看器：读写任意属性](../assets/screenshots/zh/properties.png)

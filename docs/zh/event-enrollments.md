@@ -3,6 +3,8 @@
 `type: ee`（或 `event-enrollment`）创建 Event Enrollment 对象：监视同一设备中另一个值对象的 present-value，
 并通过 Notification Class 发送通知，因此没有 `alarm` 块的点（例如模板里的温度）也能产生报警：
 
+![处于报警状态的 Event Enrollment、Notification Class 与 Life Safety](../assets/screenshots/zh/objects.png)
+
 ```yaml
 - type: ee
   name: RoomTempWatch

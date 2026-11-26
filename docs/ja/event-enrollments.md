@@ -4,6 +4,8 @@
 present-value を監視し、Notification Class 経由で通知するため、`alarm` ブロックを持たないポイント（テンプレートの温度など）でも
 アラームを出せます：
 
+![アラーム中の Event Enrollment、Notification Class、Life Safety](../assets/screenshots/ja/objects.png)
+
 ```yaml
 - type: ee
   name: RoomTempWatch

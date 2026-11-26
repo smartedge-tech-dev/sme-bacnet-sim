@@ -4,6 +4,8 @@
 another value object of the same device and reports through a notification class, so a point without an
 `alarm` block (e.g. a template's temperature) can still raise alarms:
 
+![Event enrollment in alarm, notification class, life safety points](../assets/screenshots/en/objects.png)
+
 ```yaml
 - type: ee
   name: RoomTempWatch

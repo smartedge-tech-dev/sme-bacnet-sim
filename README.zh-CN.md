@@ -1,6 +1,16 @@
-# SME BACnetSim
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/logo.svg" width="112" alt="SME BACnetSim logo"></p>
 
-[English](README.md) | [日本語](README.ja.md) | **简体中文**
+<h1 align="center">SME BACnetSim</h1>
+
+<p align="center"><strong>一台电脑，模拟整栋楼的 BACnet 设备。</strong><br>照明、空调、AHU、电表、传感器、光伏共用一个 UDP 端口，附带实时 Web UI。</p>
+
+<p align="center"><a href="https://smartedge-tech.com/zh/open-source/#bacnet-sim"><b>官网</b></a> · <a href="https://smartedge-tech-dev.github.io/sme-bacnet-sim/zh/"><b>文档</b></a> · <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><b>下载</b></a></p>
+
+<p align="center"><a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml"><img src="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><img src="https://img.shields.io/github/v/release/smartedge-tech-dev/sme-bacnet-sim" alt="release"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-5b5bd6" alt="license MIT"></a> <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-0a7bbb" alt="platform"> <img src="https://img.shields.io/badge/python-3.11%2B-3776ab" alt="python 3.11+"></p>
+
+<p align="center"><a href="README.md">English</a> | <a href="README.ja.md">日本語</a> | <strong>简体中文</strong></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/live.gif" alt="点位实时值与趋势图" width="100%"></p>
 
 一个带实时 Web UI 的 BACnet/IP 设备模拟器。可以模拟照明控制器、空调、AHU、电能表、传感器、光伏逆变器，或任何用 YAML 描述的设备，并在浏览器中观察它们的数值变化，同时由真实的 BACnet 客户端（Yabe、Niagara、你自己的 EMS……）读取和控制这些设备。
 
@@ -14,6 +24,23 @@
 基于 [bacpypes3](https://github.com/JoelBender/BACpypes3)（asyncio BACnet 协议栈，支持 BACnet/IP、IPv6 和 BACnet/SC）和 FastAPI 构建。无需前端构建步骤。
 
 SME BACnetSim 免费且采用 MIT 许可证，由 [smart-edge (智届科技)](https://smartedge-tech.com) 开发——可提供定制开发，详见 [商业支持与定制开发](#商业支持与定制开发)。
+
+## 截图
+
+<table>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/objects.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/objects.png" alt="处于报警状态的 Event Enrollment、Notification Class 与 Life Safety"></a><br><sub>处于报警状态的 Event Enrollment、Notification Class 与 Life Safety</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/custom-device.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/custom-device.png" alt="用 YAML 从零定义的设备（expr / follow behavior）"></a><br><sub>用 YAML 从零定义的设备（expr / follow behavior）</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/alarms.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/alarms.png" alt="报警列表与确认（Ack）"></a><br><sub>报警列表与确认（Ack）</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/properties.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/properties.png" alt="属性查看器：读写任意属性"></a><br><sub>属性查看器：读写任意属性</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/network.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/network.png" alt="BACnet 网络设置（无需重启即可生效）"></a><br><sub>BACnet 网络设置（无需重启即可生效）</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png" alt="深色主题"></a><br><sub>深色主题</sub></td>
+  </tr>
+</table>
 
 ## 快速开始
 

@@ -1,6 +1,16 @@
-# SME BACnetSim
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/logo.svg" width="112" alt="SME BACnetSim logo"></p>
 
-**English** | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)
+<h1 align="center">SME BACnetSim</h1>
+
+<p align="center"><strong>Simulate a building's BACnet devices on your laptop.</strong> Lighting, AC, AHUs, meters, sensors and PV<br>on one UDP port, with a live web UI.</p>
+
+<p align="center"><a href="https://smartedge-tech.com/open-source/#bacnet-sim"><b>Website</b></a> · <a href="https://smartedge-tech-dev.github.io/sme-bacnet-sim/"><b>Docs</b></a> · <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><b>Download</b></a></p>
+
+<p align="center"><a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml"><img src="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><img src="https://img.shields.io/github/v/release/smartedge-tech-dev/sme-bacnet-sim" alt="release"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-5b5bd6" alt="license MIT"></a> <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-0a7bbb" alt="platform"> <img src="https://img.shields.io/badge/python-3.11%2B-3776ab" alt="python 3.11+"></p>
+
+<p align="center"><strong>English</strong> | <a href="README.ja.md">日本語</a> | <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/live.gif" alt="Live point values and trend chart" width="100%"></p>
 
 A BACnet/IP device simulator with a live web UI. Simulate lighting controllers, air conditioners, AHUs,
 power meters, sensors, PV inverters — or any device you describe in YAML — and watch their values change
@@ -23,6 +33,23 @@ IPv6 and BACnet/SC) and FastAPI. No front-end build step.
 
 SME BACnetSim is free and MIT-licensed, developed by [smart-edge (智届科技)](https://smartedge-tech.com) —
 custom development is available, see [Commercial support & custom development](#commercial-support--custom-development).
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/objects.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/objects.png" alt="Event enrollment in alarm, notification class, life safety points"></a><br><sub>Event enrollment in alarm, notification class, life safety points</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/custom-device.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/custom-device.png" alt="A device built from scratch in YAML (expression and follow behaviors)"></a><br><sub>A device built from scratch in YAML (expression and follow behaviors)</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/alarms.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/alarms.png" alt="Alarm list with acknowledge"></a><br><sub>Alarm list with acknowledge</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/properties.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/properties.png" alt="Property inspector: read and write any property"></a><br><sub>Property inspector: read and write any property</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/network.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/network.png" alt="BACnet network settings, applied without a restart"></a><br><sub>BACnet network settings, applied without a restart</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png" alt="Dark theme"></a><br><sub>Dark theme</sub></td>
+  </tr>
+</table>
 
 ## Quick start
 

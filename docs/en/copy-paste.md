@@ -17,3 +17,5 @@
   Only basic types (real, double, unsigned, integer, boolean, enumerated, character string) can be edited;
   constructed values (arrays, lists, sequences) are shown as JSON and are read-only in the UI. Object_Identifier,
   Object_Type and Property_List are never written from the UI.
+
+![Property inspector: read and write any property](../assets/screenshots/en/properties.png)

@@ -6,6 +6,8 @@ python -m venv .venv
 .venv\Scripts\python -m sme_bacnet_sim --config configs/demo-building.yaml
 ```
 
+![点位实时值与趋势图](../assets/screenshots/zh/overview.png)
+
 打开 http://127.0.0.1:8080/ 。选项：
 
 | 选项 | 含义 |
@@ -36,6 +38,8 @@ IP 侧与虚拟网络号、路由器设备 ID 和运行模式（普通 / BBMD / 
 并把 `network:` 部分写回配置文件（其他部分和未保存的修改保持不变；`network:` 内的注释会丢失）。
 `--ip` / `--bacnet-port` 等命令行选项在下次启动时仍然优先。修改后客户端需要重新发现设备。
 Not supported：关闭 Read-Property-Multiple 或分段（segmentation）支持（始终开启）。
+
+![BACnet 网络设置（无需重启即可生效）](../assets/screenshots/zh/network.png)
 
 ## Docker
 

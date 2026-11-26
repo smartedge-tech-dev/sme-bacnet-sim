@@ -1,6 +1,16 @@
-# SME BACnetSim
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/logo.svg" width="112" alt="SME BACnetSim logo"></p>
 
-[English](README.md) | **日本語** | [简体中文](README.zh-CN.md)
+<h1 align="center">SME BACnetSim</h1>
+
+<p align="center"><strong>ノート PC 1 台で、ビルの BACnet デバイスをまるごと再現。</strong><br>照明・空調・AHU・メータ・センサ・PV を 1 つの UDP ポートで、ライブ Web UI 付き。</p>
+
+<p align="center"><a href="https://smartedge-tech.com/open-source/#bacnet-sim"><b>Web サイト</b></a> · <a href="https://smartedge-tech-dev.github.io/sme-bacnet-sim/ja/"><b>ドキュメント</b></a> · <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><b>ダウンロード</b></a></p>
+
+<p align="center"><a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml"><img src="https://github.com/smartedge-tech-dev/sme-bacnet-sim/actions/workflows/ci.yml/badge.svg" alt="CI"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/releases/latest"><img src="https://img.shields.io/github/v/release/smartedge-tech-dev/sme-bacnet-sim" alt="release"></a> <a href="https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-5b5bd6" alt="license MIT"></a> <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20Docker-0a7bbb" alt="platform"> <img src="https://img.shields.io/badge/python-3.11%2B-3776ab" alt="python 3.11+"></p>
+
+<p align="center"><a href="README.md">English</a> | <strong>日本語</strong> | <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/live.gif" alt="ポイントのライブ値とトレンドグラフ" width="100%"></p>
 
 ライブ Web UI を備えた BACnet/IP デバイスシミュレータです。照明コントローラ、エアコン、AHU、
 電力メータ、センサ、PV インバータ、あるいは YAML で記述した任意のデバイスをシミュレートし、実際の BACnet クライアント
@@ -22,6 +32,23 @@ IPv6、BACnet/SC をサポート）と FastAPI の上に構築されています
 
 SME BACnetSim は無償の MIT ライセンスで、[smart-edge (智届科技)](https://smartedge-tech.com) が開発しています —
 カスタム開発も承っています。[商用サポートとカスタム開発](#商用サポートとカスタム開発) をご覧ください。
+
+## スクリーンショット
+
+<table>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/objects.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/objects.png" alt="アラーム中の Event Enrollment、Notification Class、Life Safety"></a><br><sub>アラーム中の Event Enrollment、Notification Class、Life Safety</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/custom-device.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/custom-device.png" alt="YAML で一から定義したデバイス（expr / follow behavior）"></a><br><sub>YAML で一から定義したデバイス（expr / follow behavior）</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/alarms.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/alarms.png" alt="アラーム一覧と確認（Ack）"></a><br><sub>アラーム一覧と確認（Ack）</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/properties.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/properties.png" alt="プロパティインスペクタ：任意のプロパティを読み書き"></a><br><sub>プロパティインスペクタ：任意のプロパティを読み書き</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/network.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/network.png" alt="BACnet ネットワーク設定（再起動なしで適用）"></a><br><sub>BACnet ネットワーク設定（再起動なしで適用）</sub></td>
+    <td width="50%"><a href="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/overview-dark.png" alt="ダークテーマ"></a><br><sub>ダークテーマ</sub></td>
+  </tr>
+</table>
 
 ## クイックスタート
 
