@@ -43,3 +43,12 @@ CSV 可用 `sme-bacnet-sim record` 从真实设备（只读）录制，见[克�
 ## 模板
 
 `lighting`、`split_ac`、`ahu`、`power_meter`、`env_sensor`、`pv_inverter`、`custom`——见 [sme_bacnet_sim/templates.py](https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/sme_bacnet_sim/templates.py)。添加自己的模板只需一个约 20 行的函数。
+
+### 用户设备模板
+
+用户设备模板是放在 `--templates-dir`、`$SME_BACNET_SIM_TEMPLATES` 或 `~/.sme-bacnet-sim/templates/`（先指定者优先）下的
+YAML 文件，会和内置模板一起出现在**添加设备**对话框中。编辑文件后，用 **设备模板 → 重新加载用户设备模板** 即可无需重启生效。
+
+要从已配置好的设备生成模板：选中设备，点击设备头部的 **保存为设备模板**，输入名称（字母、数字和 `_ . -`，默认取设备名）；
+同名模板已存在时会先确认是否覆盖。设备展开后的配置会写入 `<模板目录>/<名称>.yaml`（保存路径显示在提示中），并立即可在
+**添加设备** 中选用。对应的 HTTP 操作是 `POST /api/templates/from-device/{id}`（见 [HTTP API](http-api.md)）。

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-26
+
+### Added
+- Web UI: **Save as device template** button in the device header saves the selected device as a user device
+  template (`POST /api/templates/from-device/{id}`), asking before it overwrites an existing one; the template is
+  available in **Add device** at once. Documented under Behaviors & templates.
+
 ## [0.5.0] - 2026-11-25
 
 BACnetSim is now built on [sme-sim-common](https://pypi.org/project/sme-sim-common/) 1.x, the shared base of the
@@ -140,7 +147,9 @@ First public release.
   property table, copy and paste of devices and objects; English, Japanese and Simplified Chinese.
 - Distribution as a Windows exe and a Docker image (`ghcr.io/smartedge-tech-dev/sme-bacnet-sim`).
 
-[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/smartedge-tech-dev/sme-bacnet-sim/compare/v0.1.2...v0.2.0

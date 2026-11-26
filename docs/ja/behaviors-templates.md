@@ -48,3 +48,14 @@ UI からシミュレートされた入力に書き込むと、自動的に out 
 
 `lighting`、`split_ac`、`ahu`、`power_meter`、`env_sensor`、`pv_inverter`、`custom` — 詳細は
 [sme_bacnet_sim/templates.py](https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/sme_bacnet_sim/templates.py) を参照してください。独自のテンプレートは約 20 行の関数で追加できます。
+
+### ユーザーデバイステンプレート
+
+ユーザーデバイステンプレートは `--templates-dir`、`$SME_BACNET_SIM_TEMPLATES`、`~/.sme-bacnet-sim/templates/`
+のいずれか（先に指定されたもの）に置く YAML ファイルです。**デバイスを追加**ダイアログに組み込みテンプレートと並んで表示されます。
+ファイルを編集したら **デバイステンプレート → ユーザーデバイステンプレートを再読込** で再起動なしに反映できます。
+
+設定済みのデバイスから作るには、デバイスを選択してデバイスヘッダーの **デバイステンプレートとして保存** をクリックします。
+名前（英数字と `_ . -`、既定値はデバイス名）を入力します。同名のテンプレートが既にある場合は上書きするか確認されます。
+デバイスの展開済み設定が `<テンプレートディレクトリ>/<名前>.yaml` に書き込まれ（保存先はトーストに表示）、すぐに
+**デバイスを追加** で選べます。HTTP では `POST /api/templates/from-device/{id}` で同じ操作ができます（[HTTP API](http-api.md) 参照）。

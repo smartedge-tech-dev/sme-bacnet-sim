@@ -111,3 +111,31 @@ def test_import_hooks():
         assert r.status_code == 400 and r.json()["error"]
         r = client.post("/api/config/import", files={"file": ("bad.xlsx", b"not a workbook")})
         assert r.status_code == 400 and r.json()["errors"]  # the error list is at the top level
+
+
+def test_save_device_as_template(tmp_path):
+    """The web UI's "Save as device template" path: save, 409 on an existing name, overwrite after confirm,
+    then the template is listed and the add-device dialog can create a device from it."""
+    from sme_bacnet_sim.templates import REGISTRY
+
+    old_dir = REGISTRY._user_dir
+    REGISTRY.load_user_templates(tmp_path)
+    try:
+        with _client() as (engine, client):
+            src = engine.config.devices[0]
+            url = f"/api/templates/from-device/{src.device_id}"
+            r = client.post(url, json={"name": "my_dev"})
+            assert r.status_code == 200, r.text
+            assert r.json()["ok"] and Path(r.json()["path"]) == tmp_path / "my_dev.yaml"
+            r = client.post(url, json={"name": "my_dev"})
+            assert r.status_code == 409 and "already exists" in r.json()["error"]  # app.js matches this text
+            assert client.post(url, json={"name": "my_dev", "overwrite": True}).status_code == 200
+            assert "my_dev" in {t["name"] for t in client.get("/api/templates").json()}
+            r = client.post("/api/devices", json={"template": "my_dev", "name": "From-Tpl", "params": {}})
+            assert r.status_code == 200, r.text
+            new = next(d for d in engine.config.devices if d.device_id == r.json()["name"])
+            assert new.name == "From-Tpl" and new.template == "my_dev"
+            assert client.post("/api/templates/from-device/999999", json={"name": "x"}).status_code == 404
+    finally:
+        REGISTRY.clear_user_templates()
+        REGISTRY._user_dir = old_dir
