@@ -50,3 +50,15 @@ a fault. Writing a simulated input from the UI sets it out of service automatica
 
 `lighting`, `split_ac`, `ahu`, `power_meter`, `env_sensor`, `pv_inverter`, `custom` — see
 [sme_bacnet_sim/templates.py](https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/sme_bacnet_sim/templates.py). Adding your own is a ~20-line function.
+
+### User device templates
+
+User device templates are YAML files in `--templates-dir`, `$SME_BACNET_SIM_TEMPLATES` or
+`~/.sme-bacnet-sim/templates/` (first one set wins). They appear next to the built-in templates in the
+**Add device** dialog; **Device templates → Reload user device templates** picks up edited files without a restart.
+
+To make one from a device you have configured, select the device and click **Save as device template** in the
+device header. Enter a name (letters, digits, `_ . -`; the default is the device name); if a template of that name
+already exists you are asked before it is overwritten. The device's expanded configuration is written to
+`<templates dir>/<name>.yaml` (the toast shows the path) and is available in **Add device** at once. The same
+action over HTTP is `POST /api/templates/from-device/{id}` (see [HTTP API](http-api.md)).

@@ -250,10 +250,12 @@ function renderDevice() {
     <button class="btn" id="btnPaste" title="${esc(t("dev.paste.title"))}">${esc(t("dev.paste"))}</button>
     <button class="btn" id="btnPropsDev" title="${esc(t("dev.props.title"))}">${esc(t("dev.props"))}</button>
     <button class="btn" id="btnEditDev">${esc(t("dev.editYaml"))}</button>
+    <button class="btn" id="btnTplSave" title="${esc(t("common.device_templates.save.title"))}">${esc(t("common.device_templates.save"))}</button>
     <button class="btn danger" id="btnDelDev">${esc(t("dev.delete"))}</button>`;
   $("selPri").onchange = (e) => { S.priority = Number(e.target.value); };
   $("btnEditDev").onclick = () => editDevice(d.device_id);
   $("btnCopyDev").onclick = () => copyDevice(d);
+  $("btnTplSave").onclick = () => saveAsTemplate(d);
   $("btnPaste").onclick = pasteClip;
   $("btnPropsDev").onclick = () => openProps(d.device_id, `device:${d.device_id}`, d.name);
   if ($("btnDccEnable")) $("btnDccEnable").onclick = async () => {
@@ -268,6 +270,24 @@ function renderDevice() {
     if (f && !d.name.toLowerCase().includes(f) && !o.name.toLowerCase().includes(f)) continue;
     body.appendChild(renderRow(d, o));
   }
+}
+
+// Save the device's expanded configuration as a user device template (POST /api/templates/from-device/{id}).
+// The name defaults to the device name in the allowed characters; an existing template is overwritten only after
+// a confirm. The add-device dialog re-reads /api/templates when it opens, so the new template shows up there.
+async function saveAsTemplate(d) {
+  const name = prompt(t("common.device_templates.save.prompt"), d.name.replace(/[^A-Za-z0-9_.-]+/g, "_").toLowerCase());
+  if (!name) return;
+  const url = `/api/templates/from-device/${d.device_id}`;
+  try {
+    let r;
+    try { r = await api("POST", url, { name }); }
+    catch (e) {
+      if (!/already exists/.test(e.message) || !confirm(t("common.device_templates.save.exists", { name }))) throw e;
+      r = await api("POST", url, { name, overwrite: true });
+    }
+    toast(t("common.device_templates.saved", { name: r.name, path: r.path }), "ok");
+  } catch (e) { toast(e.message); }
 }
 
 // Trend-log row: target object, record count and an enable toggle (no value / command columns).
