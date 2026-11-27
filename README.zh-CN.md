@@ -12,7 +12,7 @@
 
 <p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/zh/live.gif" alt="点位实时值与趋势图" width="100%"></p>
 
-一个带实时 Web UI 的 BACnet/IP 设备模拟器。可以模拟照明控制器、空调、AHU、电能表、传感器、光伏逆变器，或任何用 YAML 描述的设备，并在浏览器中观察它们的数值变化，同时由真实的 BACnet 客户端（Yabe、Niagara、你自己的 EMS……）读取和控制这些设备。
+一个免费开源（MIT）、带实时 Web UI 的 BACnet/IP 设备模拟器（BACnet 仿真软件），支持 Windows、Linux 和 Docker。可以模拟照明控制器、空调、AHU、电能表、传感器、光伏逆变器，或任何用 YAML 描述的设备，并在浏览器中观察它们的数值变化，同时由真实的 BACnet 客户端（Yabe、Niagara、你自己的 EMS……）读取和控制这些设备。
 
 - **一个端口承载多台设备。** 内置的 BACnet 路由器独占 UDP 47808；所有模拟设备都位于它背后的虚拟网络上（默认网络号 100），因此客户端只需一次 Who-Is 即可发现全部设备。
 - **行为逼真。** 空调开启时室温会跟随设定值，电能随功率积分，照明会上报反馈和功率，光伏出力遵循日照曲线并受限发（curtailment）上限约束。
@@ -621,6 +621,18 @@ SME BACnetSim 可以读写 EDE 文件（B.I.G.-EU Engineering Data Exchange，�
 ```
 
 端到端测试会在 UDP 47900 上启动模拟器，并通过路由器用 bacpypes3 客户端与之通信。
+
+## smart-edge 模拟器系列
+
+SME BACnetSim 是 smart-edge 免费、MIT 许可的协议模拟器系列之一。各模拟器共用同一套 Web UI 和操作方式，学会一个即可上手其他几个。
+
+| 模拟器 | 模拟对象 | 文档 |
+|---|---|---|
+| **SME BACnetSim**（本项目） | BACnet/IP 设备模拟器 | [文档](https://smartedge-tech-dev.github.io/sme-bacnet-sim/zh/) |
+| [SME ModbusSim](https://github.com/smartedge-tech-dev/sme-modbus-sim) | Modbus TCP / RTU / UDP / TLS 从站（Slave）模拟器 | [文档](https://smartedge-tech-dev.github.io/sme-modbus-sim/zh/) |
+| [SME OCPPSim](https://github.com/smartedge-tech-dev/sme-ocpp-sim) | OCPP 1.6J / 2.0.1 充电桩模拟器 | [文档](https://smartedge-tech-dev.github.io/sme-ocpp-sim/zh/) |
+
+smart-edge 全部开源工具：<https://smartedge-tech.com/zh/open-source/>
 
 ## 商业支持与定制开发
 

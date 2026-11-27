@@ -12,7 +12,8 @@
 
 <p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/en/live.gif" alt="Live point values and trend chart" width="100%"></p>
 
-A BACnet/IP device simulator with a live web UI. Simulate lighting controllers, air conditioners, AHUs,
+A free, open-source BACnet/IP device simulator (a BACnet server / device emulator) with a live web UI,
+for Windows, Linux and Docker. Simulate lighting controllers, air conditioners, AHUs,
 power meters, sensors, PV inverters — or any device you describe in YAML — and watch their values change
 in the browser while a real BACnet client (Yabe, Niagara, your own EMS…) reads and commands them.
 
@@ -818,6 +819,19 @@ offline. Full reference: `docs/en/cloning.md`.
 
 The end-to-end test starts the simulator on UDP 47900 and talks to it with a bacpypes3 client through the
 router.
+
+## More simulators from smart-edge
+
+SME BACnetSim is one of a series of free, MIT-licensed protocol simulators by smart-edge. They share the
+same web UI and conventions, so what you learn in one carries over to the others.
+
+| Simulator | What it simulates | Docs |
+|---|---|---|
+| **SME BACnetSim** (this project) | BACnet/IP device simulator | [Docs](https://smartedge-tech-dev.github.io/sme-bacnet-sim/) |
+| [SME ModbusSim](https://github.com/smartedge-tech-dev/sme-modbus-sim) | Modbus TCP / RTU / UDP / TLS slave (server) simulator | [Docs](https://smartedge-tech-dev.github.io/sme-modbus-sim/) |
+| [SME OCPPSim](https://github.com/smartedge-tech-dev/sme-ocpp-sim) | OCPP 1.6J / 2.0.1 charging station (charge point) simulator | [Docs](https://smartedge-tech-dev.github.io/sme-ocpp-sim/) |
+
+All open-source tools from smart-edge: <https://smartedge-tech.com/open-source/>
 
 ## Commercial support & custom development
 
