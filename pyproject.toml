@@ -9,7 +9,7 @@ description = "SME BACnetSim: a free BACnet/IP device simulator with a web UI"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-keywords = ["bacnet", "simulator", "building-automation", "bacpypes3"]
+keywords = ["bacnet", "bacnet-ip", "bacnet-simulator", "simulator", "emulator", "building-automation", "bms", "ems", "bacpypes3"]
 classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
@@ -25,6 +25,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/smartedge-tech-dev/sme-bacnet-sim"
+Documentation = "https://smartedge-tech-dev.github.io/sme-bacnet-sim/"
+Changelog = "https://github.com/smartedge-tech-dev/sme-bacnet-sim/blob/main/CHANGELOG.md"
 
 [project.scripts]
 sme-bacnet-sim = "sme_bacnet_sim.__main__:main"

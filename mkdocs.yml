@@ -1,6 +1,6 @@
 site_name: SME BACnetSim
 site_url: https://smartedge-tech-dev.github.io/sme-bacnet-sim/
-site_description: A free, MIT-licensed BACnet/IP device simulator with a live web UI.
+site_description: Free, open-source BACnet/IP device simulator (BACnet server emulator) with a live web UI for Windows, Linux and Docker. Test a BMS, EMS or gateway without real BACnet devices.
 repo_url: https://github.com/smartedge-tech-dev/sme-bacnet-sim
 repo_name: smartedge-tech-dev/sme-bacnet-sim
 docs_dir: docs
@@ -39,7 +39,9 @@ plugins:
         - locale: ja
           name: 日本語
           build: true
+          site_description: 無料・オープンソースの BACnet/IP デバイスシミュレータ。Windows / Linux / Docker で動作し、実機なしで BEMS・EMS・ゲートウェイなどの BACnet クライアントを試験できます。
           nav_translations:
+            Home: ホーム
             Getting started: はじめに
             Configuration: 設定
             Services and tools: サービスとツール
@@ -48,7 +50,9 @@ plugins:
         - locale: zh
           name: 简体中文
           build: true
+          site_description: 免费开源的 BACnet/IP 设备模拟器（BACnet 仿真软件），带实时 Web UI，支持 Windows、Linux 和 Docker。无需真实设备即可测试 BMS、EMS 或网关等 BACnet 客户端。
           nav_translations:
+            Home: 首页
             Getting started: 快速入门
             Configuration: 配置
             Services and tools: 服务与工具
@@ -68,7 +72,7 @@ markdown_extensions:
       check_paths: true
 
 nav:
-  - index.md
+  - Home: index.md
   - Getting started:
       - quick-start.md
       - foreign-device.md

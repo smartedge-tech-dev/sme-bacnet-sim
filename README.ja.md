@@ -12,7 +12,8 @@
 
 <p align="center"><img src="https://raw.githubusercontent.com/smartedge-tech-dev/sme-bacnet-sim/main/docs/assets/screenshots/ja/live.gif" alt="ポイントのライブ値とトレンドグラフ" width="100%"></p>
 
-ライブ Web UI を備えた BACnet/IP デバイスシミュレータです。照明コントローラ、エアコン、AHU、
+ライブ Web UI を備えた、無料・オープンソース（MIT）の BACnet/IP デバイスシミュレータ（BACnet サーバ
+エミュレータ）です。Windows / Linux / Docker で動作します。照明コントローラ、エアコン、AHU、
 電力メータ、センサ、PV インバータ、あるいは YAML で記述した任意のデバイスをシミュレートし、実際の BACnet クライアント
 （Yabe、Niagara、自作の EMS など）が読み取り・操作している間、その値の変化をブラウザ上で確認できます。
 
@@ -801,6 +802,19 @@ SME BACnetSim は EDE ファイル（B.I.G.-EU Engineering Data Exchange、レ�
 
 エンドツーエンドテストは UDP 47900 でシミュレータを起動し、bacpypes3 クライアントからルータ経由で
 通信します。
+
+## smart-edge のシミュレータシリーズ
+
+SME BACnetSim は、smart-edge が公開している無料・MIT ライセンスのプロトコルシミュレータシリーズの 1 つです。
+Web UI と操作体系は共通なので、1 つ覚えれば他のシミュレータも同じ感覚で使えます。
+
+| シミュレータ | 対象 | ドキュメント |
+|---|---|---|
+| **SME BACnetSim**（本プロジェクト） | BACnet/IP デバイスシミュレータ | [ドキュメント](https://smartedge-tech-dev.github.io/sme-bacnet-sim/ja/) |
+| [SME ModbusSim](https://github.com/smartedge-tech-dev/sme-modbus-sim) | Modbus TCP / RTU / UDP / TLS スレーブ（サーバー）シミュレーター | [ドキュメント](https://smartedge-tech-dev.github.io/sme-modbus-sim/ja/) |
+| [SME OCPPSim](https://github.com/smartedge-tech-dev/sme-ocpp-sim) | OCPP 1.6J / 2.0.1 充電器シミュレーター | [ドキュメント](https://smartedge-tech-dev.github.io/sme-ocpp-sim/ja/) |
+
+smart-edge のオープンソースツール一覧: <https://smartedge-tech.com/open-source/>
 
 ## 商用サポートとカスタム開発
 
