@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-28
+
+### Fixed
+- Windows executable: started without `-c`, the config is now `~/.sme-bacnet-sim/config.yaml` (created from the
+  bundled demo config on the first run). It used to be the demo config inside the temporary PyInstaller extraction
+  directory, so every change saved from the web UI was lost when the exe exited. `-c FILE`, pip, source and Docker
+  runs are unchanged.
+
 ## [0.5.1] - 2026-11-26
 
 ### Added

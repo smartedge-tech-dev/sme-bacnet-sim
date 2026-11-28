@@ -63,7 +63,7 @@ http://127.0.0.1:8080/ を開きます。オプション:
 
 | オプション | 意味 |
 |---|---|
-| `-c, --config FILE` | YAML/JSON 設定ファイル（デフォルトは `configs/demo-building.yaml`） |
+| `-c, --config FILE` | YAML/JSON 設定ファイル（デフォルトは `configs/demo-building.yaml`。Windows exe では `~/.sme-bacnet-sim/config.yaml` で、初回起動時にデモ設定からコピーされ、Web UI での編集が保持されます） |
 | `--ip 192.168.1.10/24` | BACnet/IP 用の NIC アドレス（デフォルト: 自動検出、/24） |
 | `--bacnet-port 47808` | BACnet/IP の UDP ポート |
 | `--foreign-bbmd 192.168.2.1[:47808]` | この BBMD に Foreign Device として登録（設定ファイルより優先） |

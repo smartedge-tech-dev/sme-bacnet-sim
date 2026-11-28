@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import shutil
 import sys
 from pathlib import Path
+from typing import Optional
 
 from sme_sim_common.cli import add_common_args, run_validate, run_web
 
@@ -14,6 +16,14 @@ from .config import ForeignDeviceConfig, SimConfig, load_file
 from .engine import Engine
 from .templates import REGISTRY
 from .web import create_app
+
+APP_NAME = "sme-bacnet-sim"
+#: Bundled demo config (the source tree, the pip package's parent directory, or ``sys._MEIPASS/configs``).
+DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / "configs" / "demo-building.yaml"
+#: File name of the per-user default config of the Windows executable.
+USER_CONFIG_NAME = "config.yaml"
+
+log = logging.getLogger(__name__)
 
 # Company website contact page (the site's default language, ja, is served at "/").
 CONTACT_URL = "https://smartedge-tech.com/contact/"
@@ -57,6 +67,32 @@ def apply_cli_overrides(cfg: SimConfig, args: argparse.Namespace) -> None:
         cfg.network.foreign_device = ForeignDeviceConfig(bbmd=bbmd, ttl=ttl)
 
 
+def user_data_dir() -> Path:
+    """Per-user data directory ``~/.sme-bacnet-sim``: user templates (``templates/``, see sme-sim-common) and,
+    for the Windows executable, the default config file (``config.yaml``, see :func:`default_config_path`)."""
+    return Path.home() / f".{APP_NAME}"
+
+
+def default_config_path() -> Optional[Path]:
+    """Config file used when started without ``-c``.
+
+    Windows executable (PyInstaller onefile, ``sys.frozen``): the bundled config lives in the temporary
+    extraction directory (``sys._MEIPASS``) that is deleted when the exe exits, so saving from the web UI there
+    would be lost. The default is the per-user ``~/.sme-bacnet-sim/config.yaml`` instead; on the first run it
+    is created as a copy of the bundled demo config. Nothing is ever written below ``sys._MEIPASS``.
+
+    Everything else (pip, source tree, Docker): the bundled demo config itself, as before.
+    """
+    if not getattr(sys, "frozen", False):
+        return DEFAULT_CONFIG if DEFAULT_CONFIG.exists() else None
+    user = user_data_dir() / USER_CONFIG_NAME
+    if not user.exists() and DEFAULT_CONFIG.exists():
+        user.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(DEFAULT_CONFIG, user)
+        log.info("created %s from the bundled %s", user, DEFAULT_CONFIG.name)
+    return user if user.exists() else None
+
+
 def load_user_templates(args: argparse.Namespace) -> None:
     """User templates from --templates-dir / the environment variable / ~/.sme-bacnet-sim/templates."""
     for err in REGISTRY.load_user_templates(getattr(args, "templates_dir", None)):
@@ -80,8 +116,11 @@ def main(argv=None) -> int:
     if rest[:1] == ["validate"]:
         return run_validate(rest[1:], prog="sme-bacnet-sim", load=load_file, build=_check,
                             before=load_user_templates, summary=lambda c: f"{len(c.devices)} devices")
-    ap = argparse.ArgumentParser(prog="sme-bacnet-sim", description="BACnet/IP device simulator with a web UI")
-    # -c/--config (default: configs/demo-building.yaml if present), --host, --http-port (alias --port),
+    ap = argparse.ArgumentParser(prog=APP_NAME,
+                                 description="BACnet/IP device simulator with a web UI; default config: the bundled "
+                                             "configs/demo-building.yaml (Windows exe: ~/.sme-bacnet-sim/config.yaml, "
+                                             "created from it)")
+    # -c/--config (default: see default_config_path), --host, --http-port (alias --port),
     # --browser / --no-browser (0.4.0 behaviour: the browser is opened only with --browser), --version, -v,
     # --templates-dir
     add_common_args(ap, default_http_port=8080, app_name="sme-bacnet-sim", version=__version__, open_browser=False)
@@ -99,8 +138,12 @@ def main(argv=None) -> int:
 
     path = args.config
     if path is None:
-        default = Path(__file__).resolve().parent.parent / "configs" / "demo-building.yaml"
-        path = str(default) if default.exists() else None
+        try:
+            default = default_config_path()
+        except OSError as e:
+            print(f"config error: cannot create the default config: {e}", file=sys.stderr)
+            return 2
+        path = str(default) if default else None
     try:
         cfg = load_file(path) if path else SimConfig()
         text = Path(path).read_text(encoding="utf-8") if path and not path.lower().endswith(".json") else None
