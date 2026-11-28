@@ -12,7 +12,7 @@ python -m venv .venv
 
 | 选项 | 含义 |
 |---|---|
-| `-c, --config FILE` | YAML/JSON 配置（默认为 `configs/demo-building.yaml`） |
+| `-c, --config FILE` | YAML/JSON 配置（默认为 `configs/demo-building.yaml`；Windows exe 默认为 `~/.sme-bacnet-sim/config.yaml`，首次启动时从演示配置复制，Web UI 中的修改会被保留） |
 | `--ip 192.168.1.10/24` | BACnet/IP 使用的网卡地址（默认：自动检测，/24） |
 | `--bacnet-port 47808` | BACnet/IP UDP 端口 |
 | `--foreign-bbmd 192.168.2.1[:47808]` | 作为 foreign device 注册到该 BBMD（优先于配置文件） |

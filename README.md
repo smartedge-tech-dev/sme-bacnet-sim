@@ -64,7 +64,7 @@ Open http://127.0.0.1:8080/ . Options:
 
 | Option | Meaning |
 |---|---|
-| `-c, --config FILE` | YAML/JSON config (defaults to `configs/demo-building.yaml`) |
+| `-c, --config FILE` | YAML/JSON config (defaults to `configs/demo-building.yaml`; Windows exe: `~/.sme-bacnet-sim/config.yaml`, created from the demo config on the first run, so web UI edits are kept) |
 | `--ip 192.168.1.10/24` | NIC address for BACnet/IP (default: auto-detect, /24) |
 | `--bacnet-port 47808` | BACnet/IP UDP port |
 | `--foreign-bbmd 192.168.2.1[:47808]` | Register as a foreign device with this BBMD (overrides config) |
